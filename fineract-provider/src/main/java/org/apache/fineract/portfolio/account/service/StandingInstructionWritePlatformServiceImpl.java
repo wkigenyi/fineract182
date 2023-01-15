@@ -230,7 +230,8 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
                     transactionAmount = standingInstructionDuesData.totalDueAmount();
                 }
                 if (recurrenceType.isDuesRecurrence()) {
-                    isDueForTransfer = DateUtils.getBusinessLocalDate().equals(standingInstructionDuesData.dueDate());
+                    isDueForTransfer = recurrenceType.isDuesRecurrence() && standingInstructionDuesData.dueDate()!=null && !standingInstructionDuesData.dueDate().isAfter(LocalDate.now(DateUtils.getDateTimeZoneOfTenant()));
+
                 }
             }
 
