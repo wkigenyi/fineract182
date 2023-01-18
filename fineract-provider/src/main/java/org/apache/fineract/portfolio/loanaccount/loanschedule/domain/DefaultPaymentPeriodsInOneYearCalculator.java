@@ -35,7 +35,7 @@ public class DefaultPaymentPeriodsInOneYearCalculator implements PaymentPeriodsI
         Integer paymentPeriodsInOneYear = Integer.valueOf(0);
         switch (repaymentFrequencyType) {
             case DAYS:
-                paymentPeriodsInOneYear = Integer.valueOf(365);
+                paymentPeriodsInOneYear = interestRateFrequencyMethod.isMonthly() ? Integer.valueOf(360) : Integer.valueOf(365);
             break;
             case WEEKS:
                 paymentPeriodsInOneYear = interestRateFrequencyMethod.isMonthly() ? Integer.valueOf(48) : Integer.valueOf(52);
