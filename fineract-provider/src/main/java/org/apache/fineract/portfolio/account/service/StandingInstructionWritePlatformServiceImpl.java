@@ -60,6 +60,7 @@ import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.DefaultScheduledDateGenerator;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.ScheduledDateGenerator;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.portfolio.savings.exception.InsufficientAccountBalanceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,7 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
 
     private final StandingInstructionDataValidator standingInstructionDataValidator;
     private final StandingInstructionAssembler standingInstructionAssembler;
+    private final SavingsAccountAssembler savingsAccountAssembler;
     private final AccountTransferDetailRepository accountTransferDetailRepository;
     private final StandingInstructionRepository standingInstructionRepository;
     private final StandingInstructionReadPlatformService standingInstructionReadPlatformService;
@@ -92,9 +94,10 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
             final StandingInstructionRepository standingInstructionRepository,
             final StandingInstructionReadPlatformService standingInstructionReadPlatformService,
             final AccountTransfersWritePlatformService accountTransfersWritePlatformService, final JdbcTemplate jdbcTemplate,
-            DatabaseSpecificSQLGenerator sqlGenerator) {
+            DatabaseSpecificSQLGenerator sqlGenerator,final SavingsAccountAssembler savingsAccountAssembler) {
         this.standingInstructionDataValidator = standingInstructionDataValidator;
         this.standingInstructionAssembler = standingInstructionAssembler;
+        this.savingsAccountAssembler = savingsAccountAssembler;
         this.accountTransferDetailRepository = accountTransferDetailRepository;
         this.standingInstructionRepository = standingInstructionRepository;
         this.standingInstructionReadPlatformService = standingInstructionReadPlatformService;
@@ -241,7 +244,7 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
                 final boolean isExceptionForBalanceCheck = false;
                 AccountTransferDTO accountTransferDTO = new AccountTransferDTO(transactionDate, transactionAmount, data.fromAccountType(),
                         data.toAccountType(), data.fromAccount().accountId(), data.toAccount().accountId(),
-                        data.name() + " Standing instruction trasfer ", null, null, null, null, data.toTransferType(), null, null,
+                        data.name() + " Standing instruction transfer ", null, null, null, null, data.toTransferType(), null, null,
                         data.transferType().getValue(), null, null, null, null, null, fromSavingsAccount, isRegularTransaction,
                         isExceptionForBalanceCheck);
                 final boolean transferCompleted = transferAmount(errors, accountTransferDTO, data.getId());
@@ -271,6 +274,27 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
                     + accountTransferDTO.getFromAccountId() + " to " + accountTransferDTO.getToAccountId(), e));
             errorLog.append("Validation exception while trasfering funds " + e.getDefaultUserMessage());
         } catch (final InsufficientAccountBalanceException e) {
+            //is it a savings to loan transfer
+            if(isSavingsToLoanAccountTransfer(accountTransferDTO.getFromAccountType(),accountTransferDTO.getToAccountType())){
+                SavingsAccount fromSavingsAccount = this.savingsAccountAssembler.assembleFrom(accountTransferDTO.getFromAccountId(),
+                        false);
+                //is there some money
+                if(fromSavingsAccount.getAccountBalance().subtract(fromSavingsAccount.getOnHoldFunds()).compareTo(BigDecimal.ZERO)>0){
+                    AccountTransferDTO newAccountTransferDTO = new AccountTransferDTO(accountTransferDTO.getTransactionDate(), fromSavingsAccount.getAccountBalance(), accountTransferDTO.getFromAccountType(),
+                            accountTransferDTO.getToAccountType(), fromSavingsAccount.getId(), accountTransferDTO.getToAccountId(),
+                            accountTransferDTO.getDescription(), null, null, null, null, accountTransferDTO.getToTransferType(), null, null,
+                            accountTransferDTO.getTransferType(), null, null, null, null, null, fromSavingsAccount, accountTransferDTO.isRegularTransaction(),
+                            accountTransferDTO.isExceptionForBalanceCheck());
+
+                    try{
+                        this.accountTransfersWritePlatformService.transferFunds(newAccountTransferDTO);
+                    }catch (final InsufficientAccountBalanceException exception){
+                        LOG.info("Attempt to use available balance failed");
+                    }
+
+                }
+            }
+
             errors.add(new Exception("InsufficientAccountBalance Exception while trasfering funds for standing Instruction id"
                     + instructionId + " from " + accountTransferDTO.getFromAccountId() + " to " + accountTransferDTO.getToAccountId(), e));
             errorLog.append("InsufficientAccountBalance Exception ");

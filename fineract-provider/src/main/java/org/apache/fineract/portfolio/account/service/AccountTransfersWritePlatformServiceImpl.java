@@ -294,7 +294,7 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
         final boolean backdatedTxnsAllowedTill = false;
         AccountTransferDetails accountTransferDetails = accountTransferDTO.getAccountTransferDetails();
         if (isSavingsToLoanAccountTransfer(accountTransferDTO.getFromAccountType(), accountTransferDTO.getToAccountType())) {
-            //
+
             SavingsAccount fromSavingsAccount = null;
             Loan toLoanAccount = null;
             if (accountTransferDetails == null) {
