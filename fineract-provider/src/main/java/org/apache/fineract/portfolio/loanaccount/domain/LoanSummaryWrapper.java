@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Set;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -232,13 +234,20 @@ public final class LoanSummaryWrapper {
     }
 
     public Money calculateTotalChargesRepaidAtDisbursement(Set<LoanCharge> charges, MonetaryCurrency currency) {
+
         Money total = Money.zero(currency);
         if (charges == null) {
             return total;
         }
         for (final LoanCharge loanCharge : charges) {
+
             if (!loanCharge.isPenaltyCharge() && loanCharge.getAmountPaid(currency).isGreaterThanZero()) {
+
                 total = total.plus(loanCharge.getAmountPaid(currency));
+            }else
+            if (loanCharge.isDisbursementCharge() || loanCharge.isDueAtDisbursement()) {
+
+                total = total.plus(loanCharge.getAmount(currency));
             }
         }
         return total;
