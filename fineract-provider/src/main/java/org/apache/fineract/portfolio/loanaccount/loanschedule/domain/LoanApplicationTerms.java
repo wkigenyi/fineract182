@@ -1099,7 +1099,7 @@ public final class LoanApplicationTerms {
     public BigDecimal interestRateFor(final PaymentPeriodsInOneYearCalculator calculator, final MathContext mc,
             final Money outstandingBalance, final LocalDate fromDate, final LocalDate toDate) {
 
-        long loanTermPeriodsInOneYear = calculator.calculate(PeriodFrequencyType.DAYS,interestRatePeriodFrequencyType).longValue();
+        long loanTermPeriodsInOneYear = calculator.calculate(PeriodFrequencyType.DAYS, interestRatePeriodFrequencyType).longValue();
         int repaymentEvery = Math.toIntExact(ChronoUnit.DAYS.between(fromDate, toDate));
         if (isFallingInRepaymentPeriod(fromDate, toDate)) {
             loanTermPeriodsInOneYear = calculatePeriodsInOneYear(calculator);
@@ -1124,7 +1124,7 @@ public final class LoanApplicationTerms {
         if (daysInYearToUse) {
             periodsInOneYear = this.daysInYearType.getValue().longValue();
         } else {
-            periodsInOneYear = calculator.calculate(this.repaymentPeriodFrequencyType,interestRatePeriodFrequencyType).longValue();
+            periodsInOneYear = calculator.calculate(this.repaymentPeriodFrequencyType, interestRatePeriodFrequencyType).longValue();
         }
         switch (this.interestCalculationPeriodMethod) {
             case DAILY:

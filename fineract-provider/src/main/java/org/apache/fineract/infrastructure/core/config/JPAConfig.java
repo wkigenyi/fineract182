@@ -54,7 +54,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 @EnableJpaAuditing
-@ConditionalOnMissingBean(name="jpaAuditingHandler")
+@ConditionalOnMissingBean(name = "jpaAuditingHandler")
 @EnableJpaRepositories(basePackages = "org.apache.fineract.**.domain")
 
 @EnableConfigurationProperties(JpaProperties.class)

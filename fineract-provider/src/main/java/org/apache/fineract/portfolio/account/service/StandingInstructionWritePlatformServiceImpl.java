@@ -94,7 +94,7 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
             final StandingInstructionRepository standingInstructionRepository,
             final StandingInstructionReadPlatformService standingInstructionReadPlatformService,
             final AccountTransfersWritePlatformService accountTransfersWritePlatformService, final JdbcTemplate jdbcTemplate,
-            DatabaseSpecificSQLGenerator sqlGenerator,final SavingsAccountAssembler savingsAccountAssembler) {
+            DatabaseSpecificSQLGenerator sqlGenerator, final SavingsAccountAssembler savingsAccountAssembler) {
         this.standingInstructionDataValidator = standingInstructionDataValidator;
         this.standingInstructionAssembler = standingInstructionAssembler;
         this.savingsAccountAssembler = savingsAccountAssembler;
@@ -233,7 +233,8 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
                     transactionAmount = standingInstructionDuesData.totalDueAmount();
                 }
                 if (recurrenceType.isDuesRecurrence()) {
-                    isDueForTransfer = recurrenceType.isDuesRecurrence() && standingInstructionDuesData.dueDate()!=null && !standingInstructionDuesData.dueDate().isAfter(LocalDate.now(DateUtils.getDateTimeZoneOfTenant()));
+                    isDueForTransfer = recurrenceType.isDuesRecurrence() && standingInstructionDuesData.dueDate() != null
+                            && !standingInstructionDuesData.dueDate().isAfter(LocalDate.now(DateUtils.getDateTimeZoneOfTenant()));
 
                 }
             }
@@ -274,21 +275,21 @@ public class StandingInstructionWritePlatformServiceImpl implements StandingInst
                     + accountTransferDTO.getFromAccountId() + " to " + accountTransferDTO.getToAccountId(), e));
             errorLog.append("Validation exception while trasfering funds " + e.getDefaultUserMessage());
         } catch (final InsufficientAccountBalanceException e) {
-            //is it a savings to loan transfer
-            if(isSavingsToLoanAccountTransfer(accountTransferDTO.getFromAccountType(),accountTransferDTO.getToAccountType())){
-                SavingsAccount fromSavingsAccount = this.savingsAccountAssembler.assembleFrom(accountTransferDTO.getFromAccountId(),
-                        false);
-                //is there some money
-                if(fromSavingsAccount.getAccountBalance().subtract(fromSavingsAccount.getOnHoldFunds()).compareTo(BigDecimal.ZERO)>0){
-                    AccountTransferDTO newAccountTransferDTO = new AccountTransferDTO(accountTransferDTO.getTransactionDate(), fromSavingsAccount.getAccountBalance(), accountTransferDTO.getFromAccountType(),
+            // is it a savings to loan transfer
+            if (isSavingsToLoanAccountTransfer(accountTransferDTO.getFromAccountType(), accountTransferDTO.getToAccountType())) {
+                SavingsAccount fromSavingsAccount = this.savingsAccountAssembler.assembleFrom(accountTransferDTO.getFromAccountId(), false);
+                // is there some money
+                if (fromSavingsAccount.getAccountBalance().subtract(fromSavingsAccount.getOnHoldFunds()).compareTo(BigDecimal.ZERO) > 0) {
+                    AccountTransferDTO newAccountTransferDTO = new AccountTransferDTO(accountTransferDTO.getTransactionDate(),
+                            fromSavingsAccount.getAccountBalance(), accountTransferDTO.getFromAccountType(),
                             accountTransferDTO.getToAccountType(), fromSavingsAccount.getId(), accountTransferDTO.getToAccountId(),
                             accountTransferDTO.getDescription(), null, null, null, null, accountTransferDTO.getToTransferType(), null, null,
-                            accountTransferDTO.getTransferType(), null, null, null, null, null, fromSavingsAccount, accountTransferDTO.isRegularTransaction(),
-                            accountTransferDTO.isExceptionForBalanceCheck());
+                            accountTransferDTO.getTransferType(), null, null, null, null, null, fromSavingsAccount,
+                            accountTransferDTO.isRegularTransaction(), accountTransferDTO.isExceptionForBalanceCheck());
 
-                    try{
+                    try {
                         this.accountTransfersWritePlatformService.transferFunds(newAccountTransferDTO);
-                    }catch (final InsufficientAccountBalanceException exception){
+                    } catch (final InsufficientAccountBalanceException exception) {
                         LOG.info("Attempt to use available balance failed");
                     }
 
