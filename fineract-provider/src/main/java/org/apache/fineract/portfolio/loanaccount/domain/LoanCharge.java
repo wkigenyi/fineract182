@@ -51,6 +51,8 @@ import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
 import org.apache.fineract.portfolio.loanaccount.command.LoanChargeCommand;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidDetail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Entity
 @Table(name = "m_loan_charge", uniqueConstraints = { @UniqueConstraint(columnNames = { "external_id" }, name = "external_id") })
@@ -146,33 +148,37 @@ public class LoanCharge extends AbstractPersistableCustom {
     public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command,
             final LocalDate dueDate) {
         final BigDecimal amount = command.bigDecimalValueOfParameterNamed("amount");
-
+        final Logger LOG = LoggerFactory.getLogger(LoanCharge.class);
         final ChargeTimeType chargeTime = null;
         final ChargeCalculationType chargeCalculation = null;
         final ChargePaymentMode chargePaymentMode = null;
         BigDecimal amountPercentageAppliedTo = BigDecimal.ZERO;
         switch (ChargeCalculationType.fromInt(chargeDefinition.getChargeCalculation())) {
             case PERCENT_OF_AMOUNT:
-                if (command.hasParameter("principal")) {
-                    amountPercentageAppliedTo = command.bigDecimalValueOfParameterNamed("principal");
-                } else {
-                    amountPercentageAppliedTo = loan.getPrincpal().getAmount();
-                }
+                /*
+                 * if (command.hasParameter("principal")) {
+                 * LOG.warn("We have used the parameter coming with the command"); amountPercentageAppliedTo =
+                 * command.bigDecimalValueOfParameterNamed("principal"); } else { amountPercentageAppliedTo =
+                 * loan.getPrincpal().getAmount(); }
+                 */
+                amountPercentageAppliedTo = loan.getPrincpal().getAmount();
             break;
             case PERCENT_OF_AMOUNT_AND_INTEREST:
-                if (command.hasParameter("principal") && command.hasParameter("interest")) {
-                    amountPercentageAppliedTo = command.bigDecimalValueOfParameterNamed("principal")
-                            .add(command.bigDecimalValueOfParameterNamed("interest"));
-                } else {
-                    amountPercentageAppliedTo = loan.getPrincpal().getAmount().add(loan.getTotalInterest());
-                }
+                /*
+                 * if (command.hasParameter("principal") && command.hasParameter("interest")) {
+                 * amountPercentageAppliedTo = command.bigDecimalValueOfParameterNamed("principal")
+                 * .add(command.bigDecimalValueOfParameterNamed("interest")); } else { amountPercentageAppliedTo =
+                 * loan.getPrincpal().getAmount().add(loan.getTotalInterest()); }
+                 */
+                amountPercentageAppliedTo = loan.getPrincpal().getAmount().add(loan.getTotalInterest());
             break;
             case PERCENT_OF_INTEREST:
-                if (command.hasParameter("interest")) {
-                    amountPercentageAppliedTo = command.bigDecimalValueOfParameterNamed("interest");
-                } else {
-                    amountPercentageAppliedTo = loan.getTotalInterest();
-                }
+                /*
+                 * if (command.hasParameter("interest")) { amountPercentageAppliedTo =
+                 * command.bigDecimalValueOfParameterNamed("interest"); } else { amountPercentageAppliedTo =
+                 * loan.getTotalInterest(); }
+                 */
+                amountPercentageAppliedTo = loan.getTotalInterest();
             break;
             default:
             break;

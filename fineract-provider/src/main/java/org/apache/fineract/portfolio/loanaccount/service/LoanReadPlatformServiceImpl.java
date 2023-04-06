@@ -118,6 +118,8 @@ import org.apache.fineract.portfolio.paymentdetail.data.PaymentDetailData;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReadPlatformService;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -157,6 +159,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     private final AccountDetailsReadPlatformService accountDetailsReadPlatformService;
     private final ColumnValidator columnValidator;
     private final DatabaseSpecificSQLGenerator sqlGenerator;
+    final Logger LOG = LoggerFactory.getLogger(LoanReadPlatformServiceImpl.class);
 
     @Autowired
     public LoanReadPlatformServiceImpl(final PlatformSecurityContext context,
@@ -1011,14 +1014,20 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     private static final class MusoniOverdueLoanScheduleMapper implements RowMapper<OverdueLoanScheduleData> {
 
         public String schema() {
-            return " ls.loan_id as loanId, ls.installment as period, ls.fromdate as fromDate, ls.duedate as dueDate, ls.obligations_met_on_date as obligationsMetOnDate, ls.completed_derived as complete,"
-                    + " ls.principal_amount as principalDue, ls.principal_completed_derived as principalPaid, ls.principal_writtenoff_derived as principalWrittenOff, "
-                    + " ls.interest_amount as interestDue, ls.interest_completed_derived as interestPaid, ls.interest_waived_derived as interestWaived, ls.interest_writtenoff_derived as interestWrittenOff, "
-                    + " ls.fee_charges_amount as feeChargesDue, ls.fee_charges_completed_derived as feeChargesPaid, ls.fee_charges_waived_derived as feeChargesWaived, ls.fee_charges_writtenoff_derived as feeChargesWrittenOff, "
-                    + " ls.penalty_charges_amount as penaltyChargesDue, ls.penalty_charges_completed_derived as penaltyChargesPaid, ls.penalty_charges_waived_derived as penaltyChargesWaived, ls.penalty_charges_writtenoff_derived as penaltyChargesWrittenOff, "
-                    + " ls.total_paid_in_advance_derived as totalPaidInAdvanceForPeriod, ls.total_paid_late_derived as totalPaidLateForPeriod, "
-                    + " mc.amount,mc.id as chargeId " + " from m_loan_repayment_schedule ls "
-                    + " inner join m_loan ml on ml.id = ls.loan_id "
+            return " ls.loan_id as loanId, " + "ls.installment as period, " + "ls.fromdate as fromDate, " + "ls.duedate as dueDate, "
+                    + "ls.obligations_met_on_date as obligationsMetOnDate, " + "ls.completed_derived as complete,"
+                    + "ls.principal_amount as principalDue, " + "ls.principal_completed_derived as principalPaid, "
+                    + "ls.principal_writtenoff_derived as principalWrittenOff, " + "ls.interest_amount as interestDue, "
+                    + "ls.interest_completed_derived as interestPaid, " + "ls.interest_waived_derived as interestWaived, "
+                    + "ls.interest_writtenoff_derived as interestWrittenOff, " + "ls.fee_charges_amount as feeChargesDue, "
+                    + "ls.fee_charges_completed_derived as feeChargesPaid, " + "ls.fee_charges_waived_derived as feeChargesWaived, "
+                    + "ls.fee_charges_writtenoff_derived as feeChargesWrittenOff, " + "ls.penalty_charges_amount as penaltyChargesDue, "
+                    + "ls.penalty_charges_completed_derived as penaltyChargesPaid, "
+                    + "ls.penalty_charges_waived_derived as penaltyChargesWaived, "
+                    + "ls.penalty_charges_writtenoff_derived as penaltyChargesWrittenOff, "
+                    + "ls.total_paid_in_advance_derived as totalPaidInAdvanceForPeriod, "
+                    + "ls.total_paid_late_derived as totalPaidLateForPeriod, " + "mc.amount," + "mc.id as chargeId "
+                    + "from m_loan_repayment_schedule ls " + "inner join m_loan ml on ml.id = ls.loan_id "
                     + " join m_product_loan_charge plc on plc.product_loan_id = ml.product_id "
                     + " join m_charge mc on mc.id = plc.charge_id ";
 
@@ -1535,6 +1544,27 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
                 .append(" and ls.completed_derived <> true and mc.charge_applies_to_enum =1 ")
                 .append(" and ls.recalculated_interest_component <> true ")
                 .append(" and mc.charge_time_enum = 9 and ml.loan_status_id = 300 ");
+
+        if (backdatePenalties) {
+            return this.jdbcTemplate.query(sqlBuilder.toString(), rm, penaltyWaitPeriod);
+        }
+        // Only apply for duedate = yesterday (so that we don't apply
+        // penalties on the duedate itself)
+        sqlBuilder.append(" and ls.duedate >= " + sqlGenerator.subDate(sqlGenerator.currentBusinessDate(), "(? + 1)", "day"));
+        return this.jdbcTemplate.query(sqlBuilder.toString(), rm, penaltyWaitPeriod, penaltyWaitPeriod);
+    }
+
+    @Override
+    public Collection<OverdueLoanScheduleData> retrieveLoanOverdueInstallments(Long loanId, Long penaltyWaitPeriod,
+            Boolean backdatePenalties) {
+        final MusoniOverdueLoanScheduleMapper rm = new MusoniOverdueLoanScheduleMapper();
+
+        final StringBuilder sqlBuilder = new StringBuilder(400);
+        sqlBuilder.append("select ").append(rm.schema())
+                .append(" where " + sqlGenerator.subDate(sqlGenerator.currentBusinessDate(), "?", "day") + " > ls.duedate ")
+                .append(" and ls.completed_derived <> true and mc.charge_applies_to_enum =1 ")
+                .append(" and ls.recalculated_interest_component <> true ")
+                .append(" and mc.charge_time_enum = 9 and ml.loan_status_id = 300 ").append(" and ml.id = " + loanId + " ");
 
         if (backdatePenalties) {
             return this.jdbcTemplate.query(sqlBuilder.toString(), rm, penaltyWaitPeriod);
