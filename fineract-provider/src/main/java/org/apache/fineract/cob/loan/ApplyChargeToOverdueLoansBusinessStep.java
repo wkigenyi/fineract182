@@ -41,9 +41,6 @@ public class ApplyChargeToOverdueLoansBusinessStep implements LoanCOBBusinessSte
         final Boolean backdatePenalties = configurationDomainService.isBackdatePenaltiesEnabled();
         final Collection<OverdueLoanScheduleData> overdueLoanScheduledInstallments = loanReadPlatformService
                 .retrieveLoanOverdueInstallments(input.getId(), penaltyWaitPeriodValue, backdatePenalties);
-        // TODO: this is very much not effective to get all overdue installments for each loan, a new method needs to be
-        // implemented for it
-
         loanWritePlatformService.applyOverdueChargesForLoan(input.getId(), overdueLoanScheduledInstallments);
 
         return input;
