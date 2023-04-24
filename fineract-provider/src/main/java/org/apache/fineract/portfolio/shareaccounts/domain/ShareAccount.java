@@ -257,7 +257,7 @@ public class ShareAccount extends AbstractPersistableCustom {
                 this.totalSharesPending += transaction.getTotalShares();
             }
 
-        } else if (transaction.isPurchasTransaction()) {
+        } else if (transaction.isPurchaseTransaction()) {
             if (this.totalSharesApproved == null) {
                 this.totalSharesApproved = transaction.getTotalShares();
             } else {
@@ -419,7 +419,7 @@ public class ShareAccount extends AbstractPersistableCustom {
         this.totalSharesApproved = null;
         Long tempTotalShares = Long.valueOf(0);
         for (ShareAccountTransaction transaction : this.shareAccountTransactions) {
-            if (transaction.isPurchasTransaction()) {
+            if (transaction.isPurchaseTransaction()) {
                 transaction.undoApprove();
                 tempTotalShares += transaction.getTotalShares();
             }

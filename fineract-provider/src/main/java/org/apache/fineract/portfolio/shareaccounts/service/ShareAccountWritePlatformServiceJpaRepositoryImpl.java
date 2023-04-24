@@ -55,6 +55,8 @@ import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountTransactio
 import org.apache.fineract.portfolio.shareaccounts.serialization.ShareAccountDataSerializer;
 import org.apache.fineract.portfolio.shareproducts.domain.ShareProduct;
 import org.apache.fineract.portfolio.shareproducts.domain.ShareProductRepositoryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
@@ -64,6 +66,8 @@ import org.springframework.stereotype.Service;
 public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareAccountWritePlatformService {
 
     private final ShareAccountDataSerializer accountDataSerializer;
+
+    private final Logger LOG = LoggerFactory.getLogger(ShareAccountWritePlatformServiceJpaRepositoryImpl.class);
 
     private final ShareAccountRepositoryWrapper shareAccountRepository;
 
@@ -219,22 +223,27 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
     }
 
     @Override
-    public CommandProcessingResult applyAddtionalShares(final Long accountId, JsonCommand jsonCommand) {
+    public CommandProcessingResult applyAdditionalShares(final Long accountId, JsonCommand jsonCommand) {
         try {
             ShareAccount account = this.shareAccountRepository.findOneWithNotFoundDetection(accountId);
-            Map<String, Object> changes = this.accountDataSerializer.validateAndApplyAddtionalShares(jsonCommand, account);
+            Map<String, Object> changes = this.accountDataSerializer.validateAndApplyAdditionalShares(jsonCommand, account);
             ShareAccountTransaction transaction = null;
+            Boolean useSavings = false;
             if (!changes.isEmpty()) {
+
                 this.shareAccountRepository.saveAndFlush(account);
                 transaction = (ShareAccountTransaction) changes.get(ShareAccountApiConstants.additionalshares_paramname);
                 transaction = account.getShareAccountTransaction(transaction);
                 if (transaction != null) {
                     changes.clear();
+
                     changes.put(ShareAccountApiConstants.additionalshares_paramname, transaction.getId());
                     Set<ShareAccountTransaction> transactions = new HashSet<>();
                     transactions.add(transaction);
                     this.journalEntryWritePlatformService.createJournalEntriesForShares(populateJournalEntries(account, transactions));
                 }
+
+
             }
 
             return new CommandProcessingResultBuilder() //
@@ -268,7 +277,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
             Long totalSubsribedShares = Long.valueOf(0);
 
             for (ShareAccountTransaction transaction : transactions) {
-                if (transaction.isActive() && transaction.isPurchasTransaction()) {
+                if (transaction.isActive() && transaction.isPurchaseTransaction()) {
                     journalTransactions.add(transaction);
                     totalSubsribedShares += transaction.getTotalShares();
                 }
@@ -391,7 +400,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
 
         try {
             ShareAccount account = this.shareAccountRepository.findOneWithNotFoundDetection(accountId);
-            Map<String, Object> changes = this.accountDataSerializer.validateAndApproveAddtionalShares(jsonCommand, account);
+            Map<String, Object> changes = this.accountDataSerializer.validateAndApproveAdditionalShares(jsonCommand, account);
             if (!changes.isEmpty()) {
                 this.shareAccountRepository.save(account);
                 ArrayList<Long> transactionIds = (ArrayList<Long>) changes.get(ShareAccountApiConstants.requestedshares_paramname);

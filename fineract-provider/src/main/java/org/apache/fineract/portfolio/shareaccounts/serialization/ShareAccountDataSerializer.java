@@ -103,9 +103,10 @@ public class ShareAccountDataSerializer {
             Arrays.asList(ShareAccountApiConstants.locale_paramname, ShareAccountApiConstants.dateformat_paramname,
                     ShareAccountApiConstants.closeddate_paramname, ShareAccountApiConstants.note_paramname));
 
-    private static final Set<String> addtionalSharesParameters = new HashSet<>(Arrays.asList(ShareAccountApiConstants.locale_paramname,
+    private static final Set<String> additionalSharesParameters = new HashSet<>(
+            Arrays.asList(ShareAccountApiConstants.locale_paramname,
             ShareAccountApiConstants.requesteddate_paramname, ShareAccountApiConstants.requestedshares_paramname,
-            ShareAccountApiConstants.purchasedprice_paramname, ShareAccountApiConstants.dateformat_paramname));
+            ShareAccountApiConstants.purchasedprice_paramname, ShareAccountApiConstants.dateformat_paramname,ShareAccountApiConstants.use_savings));
 
     @Autowired
     public ShareAccountDataSerializer(final PlatformSecurityContext platformSecurityContext, final FromJsonHelper fromApiJsonHelper,
@@ -133,6 +134,10 @@ public class ShareAccountDataSerializer {
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("sharesaccount");
         JsonElement element = jsonCommand.parsedJson();
 
+        boolean useSavings = false;
+        if(jsonCommand.hasParameter(ShareAccountApiConstants.use_savings)){
+            useSavings = this.fromApiJsonHelper.extractBooleanNamed(ShareAccountApiConstants.use_savings,element);
+        }
         final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(element.getAsJsonObject());
         final Long clientId = this.fromApiJsonHelper.extractLongNamed(ShareAccountApiConstants.clientid_paramname, element);
         final Long productId = this.fromApiJsonHelper.extractLongNamed(ShareAccountApiConstants.productid_paramname, element);
@@ -211,7 +216,7 @@ public class ShareAccountDataSerializer {
         Long approvedShares = null;
         Long pendingShares = requestedShares;
         BigDecimal unitPrice = shareProduct.deriveMarketPrice(applicationDate);
-        ShareAccountTransaction transaction = new ShareAccountTransaction(applicationDate, requestedShares, unitPrice);
+        ShareAccountTransaction transaction = new ShareAccountTransaction(applicationDate, requestedShares, unitPrice,useSavings);
         Set<ShareAccountTransaction> sharesPurchased = new HashSet<>();
         sharesPurchased.add(transaction);
 
@@ -679,13 +684,13 @@ public class ShareAccountDataSerializer {
         return frequencyType;
     }
 
-    public Map<String, Object> validateAndApplyAddtionalShares(JsonCommand jsonCommand, ShareAccount account) {
+    public Map<String, Object> validateAndApplyAdditionalShares(JsonCommand jsonCommand, ShareAccount account) {
         Map<String, Object> actualChanges = new HashMap<>();
         if (StringUtils.isBlank(jsonCommand.json())) {
             throw new InvalidJsonException();
         }
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
-        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), addtionalSharesParameters);
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), additionalSharesParameters);
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("sharesaccount");
         JsonElement element = jsonCommand.parsedJson();
@@ -693,6 +698,10 @@ public class ShareAccountDataSerializer {
             baseDataValidator.failWithCodeNoParameterAddedToErrorCode("is.not.in.active.state");
         }
         LocalDate requestedDate = this.fromApiJsonHelper.extractLocalDateNamed(ShareAccountApiConstants.requesteddate_paramname, element);
+        boolean useSavings = false;
+        if(jsonCommand.hasParameter(ShareAccountApiConstants.use_savings)){
+            useSavings = this.fromApiJsonHelper.extractBooleanNamed(ShareAccountApiConstants.use_savings,element);
+        }
         baseDataValidator.reset().parameter(ShareAccountApiConstants.requesteddate_paramname).value(requestedDate).notNull();
         final Long sharesRequested = this.fromApiJsonHelper.extractLongNamed(ShareAccountApiConstants.requestedshares_paramname, element);
         baseDataValidator.reset().parameter(ShareAccountApiConstants.requestedshares_paramname).value(sharesRequested).notNull();
@@ -725,7 +734,7 @@ public class ShareAccountDataSerializer {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
         final BigDecimal unitPrice = shareProduct.deriveMarketPrice(requestedDate);
-        ShareAccountTransaction purchaseTransaction = new ShareAccountTransaction(requestedDate, sharesRequested, unitPrice);
+        ShareAccountTransaction purchaseTransaction = new ShareAccountTransaction(requestedDate, sharesRequested, unitPrice,useSavings);
         account.addAdditionalPurchasedShares(purchaseTransaction);
         handleAdditionalSharesChargeTransactions(account, purchaseTransaction);
         actualChanges.put(ShareAccountApiConstants.additionalshares_paramname, purchaseTransaction);
@@ -747,13 +756,13 @@ public class ShareAccountDataSerializer {
         purchaseTransaction.updateChargeAmount(totalChargeAmount);
     }
 
-    public Map<String, Object> validateAndApproveAddtionalShares(JsonCommand jsonCommand, ShareAccount account) {
+    public Map<String, Object> validateAndApproveAdditionalShares(JsonCommand jsonCommand, ShareAccount account) {
         Map<String, Object> actualChanges = new HashMap<>();
         if (StringUtils.isBlank(jsonCommand.json())) {
             throw new InvalidJsonException();
         }
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
-        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), addtionalSharesParameters);
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), additionalSharesParameters);
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("sharesaccount");
         JsonElement element = jsonCommand.parsedJson();
@@ -806,7 +815,7 @@ public class ShareAccountDataSerializer {
             throw new InvalidJsonException();
         }
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
-        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), addtionalSharesParameters);
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), additionalSharesParameters);
         JsonElement element = jsonCommand.parsedJson();
         final ArrayList<Long> purchasedShares = new ArrayList<>();
         if (this.fromApiJsonHelper.parameterExists(ShareAccountApiConstants.requestedshares_paramname, element)) {
@@ -853,7 +862,7 @@ public class ShareAccountDataSerializer {
             throw new InvalidJsonException();
         }
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
-        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), addtionalSharesParameters);
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), additionalSharesParameters);
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("sharesaccount");
         JsonElement element = jsonCommand.parsedJson();
@@ -918,7 +927,7 @@ public class ShareAccountDataSerializer {
                 LocalDate purchaseDate = transaction.getPurchasedDate();
                 LocalDate lockinDate = deriveLockinPeriodDuration(lockinPeriod, periodType, purchaseDate);
                 if (!lockinDate.isAfter(redeemDate)) {
-                    if (transaction.isPurchasTransaction()) {
+                    if (transaction.isPurchaseTransaction()) {
                         totalSharesCanBeRedeemed += transaction.getTotalShares();
                     } else if (transaction.isRedeemTransaction()) {
                         totalSharesCanBeRedeemed -= transaction.getTotalShares();
@@ -927,7 +936,7 @@ public class ShareAccountDataSerializer {
 
                 if (!purchaseDate.isAfter(redeemDate)) {
                     isPurchaseTransactionExist = true;
-                    if (transaction.isPurchasTransaction()) {
+                    if (transaction.isPurchaseTransaction()) {
                         totalSharesPurchasedBeforeRedeem += transaction.getTotalShares();
                     } else if (transaction.isRedeemTransaction()) {
                         totalSharesPurchasedBeforeRedeem -= transaction.getTotalShares();

@@ -18,9 +18,7 @@
  */
 package org.apache.fineract.portfolio.accounts.constants;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
+
 import java.util.Set;
 
 public interface ShareAccountApiConstants {
@@ -43,6 +41,8 @@ public interface ShareAccountApiConstants {
     String locale_paramname = "locale";
 
     String dateformat_paramname = "dateFormat";
+
+    String use_savings = "useSavings";
 
     String id_paramname = "id";
 
@@ -100,11 +100,6 @@ public interface ShareAccountApiConstants {
 
     String shareEntityType = "share";
 
-    Set<String> supportedParameters = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(locale_paramname, dateformat_paramname,
-            id_paramname, clientid_paramname, productid_paramname, submitteddate_paramname, approveddate_paramname, externalid_paramname,
-            currency_paramname, digitsafterdecimal_paramname, inmultiplesof_paramname, requestedshares_paramname,
-            savingsaccountid_paramname, lockinperiod_paramname, lockperiodfrequencytype_paramname, minimumactiveperiod_paramname,
-            minimumactiveperiodfrequencytype_paramname, allowdividendcalculationforinactiveclients_paramname, charges_paramname,
-            applicationdate_param, purchaseddate_paramname, numberofshares_paramname, purchasedprice_paramname)));
+    Set<String> supportedParameters = Set.of(locale_paramname, dateformat_paramname, id_paramname, clientid_paramname, productid_paramname, submitteddate_paramname, approveddate_paramname, externalid_paramname, currency_paramname, digitsafterdecimal_paramname, inmultiplesof_paramname, requestedshares_paramname, savingsaccountid_paramname, lockinperiod_paramname, lockperiodfrequencytype_paramname, minimumactiveperiod_paramname, minimumactiveperiodfrequencytype_paramname, allowdividendcalculationforinactiveclients_paramname, charges_paramname, applicationdate_param, purchaseddate_paramname, numberofshares_paramname, purchasedprice_paramname, use_savings);
 
 }

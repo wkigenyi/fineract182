@@ -42,4 +42,5 @@
     <include file="parts/0020_add_audit_entries.xml" relativeToChangelogFile="true"/>
     <include file="parts/0026_reversals_for_reversed_transactions.xml" relativeToChangelogFile="true"/>
     <include file="parts/20230211-make-error-log-long-text.xml" relativeToChangelogFile="true"/>
+    <include file="parts/2023-04-23-add-use-savings.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
