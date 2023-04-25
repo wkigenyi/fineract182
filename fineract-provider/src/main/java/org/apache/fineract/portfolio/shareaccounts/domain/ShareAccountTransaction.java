@@ -67,7 +67,7 @@ public class ShareAccountTransaction extends AbstractPersistableCustom {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
-    @Column(name = "use_savings",nullable = true)
+    @Column(name = "use_savings", nullable = true)
     private boolean useSavings;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "shareAccountTransaction", orphanRemoval = true, fetch = FetchType.EAGER)
@@ -91,7 +91,8 @@ public class ShareAccountTransaction extends AbstractPersistableCustom {
         this.amountPaid = new BigDecimal(this.amount.doubleValue());
     }
 
-    public ShareAccountTransaction(final LocalDate transactionDate, final Long totalShares, final BigDecimal shareValue, final Boolean useSavings) {
+    public ShareAccountTransaction(final LocalDate transactionDate, final Long totalShares, final BigDecimal shareValue,
+            final Boolean useSavings) {
         this.transactionDate = transactionDate;
         this.totalShares = totalShares;
         this.shareValue = shareValue;
@@ -99,7 +100,7 @@ public class ShareAccountTransaction extends AbstractPersistableCustom {
         this.type = PurchasedSharesStatusType.PURCHASED.getValue();
         this.amount = shareValue.multiply(BigDecimal.valueOf(totalShares));
         this.amountPaid = new BigDecimal(this.amount.doubleValue());
-        this.useSavings =  useSavings;
+        this.useSavings = useSavings;
     }
 
     private ShareAccountTransaction(final LocalDate transactionDate, final Long totalShares, final BigDecimal shareValue,
@@ -113,8 +114,6 @@ public class ShareAccountTransaction extends AbstractPersistableCustom {
         this.chargeAmount = chargeAmount;
         this.amountPaid = amountPaid;
     }
-
-
 
     public static ShareAccountTransaction createRedeemTransaction(final LocalDate transactionDate, final Long totalShares,
             final BigDecimal shareValue) {
@@ -182,11 +181,11 @@ public class ShareAccountTransaction extends AbstractPersistableCustom {
                 && this.type.equals(PurchasedSharesStatusType.PURCHASED.getValue());
     }
 
-    public ShareAccount getShareAccount(){
+    public ShareAccount getShareAccount() {
         return shareAccount;
     }
 
-    public boolean isUseSavingsTransactions(){
+    public boolean isUseSavingsTransactions() {
         return this.useSavings;
     }
 
@@ -247,8 +246,8 @@ public class ShareAccountTransaction extends AbstractPersistableCustom {
         if (isRedeemTransaction()) {
             this.amountPaid = this.amountPaid.subtract(amountPaid);
         } else if (isPurchaseTransaction() /*
-                                           * || isPurchaseRejectedTransaction()
-                                           */) {
+                                            * || isPurchaseRejectedTransaction()
+                                            */) {
             this.amountPaid = this.amountPaid.add(amountPaid);
         }
     }

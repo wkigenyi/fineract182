@@ -81,28 +81,28 @@ public class AccountTransferTransaction extends AbstractPersistableCustom {
             final Money transactionAmount, final String description) {
 
         return new AccountTransferTransaction(accountTransferDetails, withdrawal, deposit, null, null, transactionDate, transactionAmount,
-                description,null);
+                description, null);
     }
 
     public static AccountTransferTransaction savingsToLoanTransfer(final AccountTransferDetails accountTransferDetails,
             final SavingsAccountTransaction withdrawal, final LoanTransaction loanRepaymentTransaction, final LocalDate transactionDate,
             final Money transactionAmount, final String description) {
         return new AccountTransferTransaction(accountTransferDetails, withdrawal, null, loanRepaymentTransaction, null, transactionDate,
-                transactionAmount, description,null);
+                transactionAmount, description, null);
     }
 
     public static AccountTransferTransaction savingsToSharesTransfer(final AccountTransferDetails accountTransferDetails,
-                                                                   final SavingsAccountTransaction withdrawal, final ShareAccountTransaction shareAccountTransaction, final LocalDate transactionDate,
-                                                                   final Money transactionAmount, final String description) {
-        return new AccountTransferTransaction(accountTransferDetails, withdrawal, null, null, null, transactionDate,
-                transactionAmount, description,shareAccountTransaction);
+            final SavingsAccountTransaction withdrawal, final ShareAccountTransaction shareAccountTransaction,
+            final LocalDate transactionDate, final Money transactionAmount, final String description) {
+        return new AccountTransferTransaction(accountTransferDetails, withdrawal, null, null, null, transactionDate, transactionAmount,
+                description, shareAccountTransaction);
     }
 
     public static AccountTransferTransaction loanTosavingsTransfer(final AccountTransferDetails accountTransferDetails,
             final SavingsAccountTransaction deposit, final LoanTransaction loanRefundTransaction, final LocalDate transactionDate,
             final Money transactionAmount, final String description) {
         return new AccountTransferTransaction(accountTransferDetails, null, deposit, null, loanRefundTransaction, transactionDate,
-                transactionAmount, description,null);
+                transactionAmount, description, null);
     }
 
     protected AccountTransferTransaction() {
@@ -112,7 +112,7 @@ public class AccountTransferTransaction extends AbstractPersistableCustom {
     private AccountTransferTransaction(final AccountTransferDetails accountTransferDetails, final SavingsAccountTransaction withdrawal,
             final SavingsAccountTransaction deposit, final LoanTransaction loanRepaymentTransaction,
             final LoanTransaction loanRefundTransaction, final LocalDate transactionDate, final Money transactionAmount,
-            final String description,final ShareAccountTransaction shareAccountTransaction) {
+            final String description, final ShareAccountTransaction shareAccountTransaction) {
         this.accountTransferDetails = accountTransferDetails;
         this.fromLoanTransaction = loanRefundTransaction;
         this.fromSavingsTransaction = withdrawal;
@@ -157,6 +157,6 @@ public class AccountTransferTransaction extends AbstractPersistableCustom {
             LoanTransaction disburseTransaction, LoanTransaction repaymentTransaction, LocalDate transactionDate,
             Money transactionMonetaryAmount, String description) {
         return new AccountTransferTransaction(accountTransferDetails, null, null, repaymentTransaction, disburseTransaction,
-                transactionDate, transactionMonetaryAmount, description,null);
+                transactionDate, transactionMonetaryAmount, description, null);
     }
 }

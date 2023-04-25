@@ -31,6 +31,7 @@ public class CommandProcessingResultBuilder {
     private Long clientId;
     private Long loanId;
     private Long savingsId;
+
     private String resourceIdentifier;
     private Long entityId;
     private Long subEntityId;

@@ -38,6 +38,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -177,6 +178,18 @@ public class AccountTransferDetailAssembler {
 
         return AccountTransferDetails.savingsToLoanTransfer(fromOffice, fromClient, fromSavingsAccount, toOffice, toClient, toLoanAccount,
                 transferType);
+
+    }
+
+    public AccountTransferDetails assembleSavingsToSharesTransfer(final SavingsAccount fromSavingsAccount,
+            final ShareAccount toShareAccount, Integer transferType) {
+        final Office fromOffice = fromSavingsAccount.office();
+        final Client fromClient = fromSavingsAccount.getClient();
+        final Office toOffice = toShareAccount.getClient().getOffice();
+        final Client toClient = toShareAccount.getClient();
+
+        return AccountTransferDetails.savingsToSharesTransfer(fromOffice, fromClient, fromSavingsAccount, toOffice, toClient,
+                toShareAccount, transferType);
 
     }
 

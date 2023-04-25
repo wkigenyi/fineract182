@@ -243,7 +243,6 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
                     this.journalEntryWritePlatformService.createJournalEntriesForShares(populateJournalEntries(account, transactions));
                 }
 
-
             }
 
             return new CommandProcessingResultBuilder() //

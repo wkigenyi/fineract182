@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.portfolio.accounts.constants;
 
-
 import java.util.Set;
 
 public interface ShareAccountApiConstants {
@@ -100,6 +99,11 @@ public interface ShareAccountApiConstants {
 
     String shareEntityType = "share";
 
-    Set<String> supportedParameters = Set.of(locale_paramname, dateformat_paramname, id_paramname, clientid_paramname, productid_paramname, submitteddate_paramname, approveddate_paramname, externalid_paramname, currency_paramname, digitsafterdecimal_paramname, inmultiplesof_paramname, requestedshares_paramname, savingsaccountid_paramname, lockinperiod_paramname, lockperiodfrequencytype_paramname, minimumactiveperiod_paramname, minimumactiveperiodfrequencytype_paramname, allowdividendcalculationforinactiveclients_paramname, charges_paramname, applicationdate_param, purchaseddate_paramname, numberofshares_paramname, purchasedprice_paramname, use_savings);
+    Set<String> supportedParameters = Set.of(locale_paramname, dateformat_paramname, id_paramname, clientid_paramname, productid_paramname,
+            submitteddate_paramname, approveddate_paramname, externalid_paramname, currency_paramname, digitsafterdecimal_paramname,
+            inmultiplesof_paramname, requestedshares_paramname, savingsaccountid_paramname, lockinperiod_paramname,
+            lockperiodfrequencytype_paramname, minimumactiveperiod_paramname, minimumactiveperiodfrequencytype_paramname,
+            allowdividendcalculationforinactiveclients_paramname, charges_paramname, applicationdate_param, purchaseddate_paramname,
+            numberofshares_paramname, purchasedprice_paramname, use_savings);
 
 }

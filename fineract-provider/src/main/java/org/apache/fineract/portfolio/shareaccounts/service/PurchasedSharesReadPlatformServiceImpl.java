@@ -77,7 +77,7 @@ public class PurchasedSharesReadPlatformServiceImpl implements PurchasedSharesRe
             final BigDecimal amountPaid = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "amountPaid");
 
             return new ShareAccountTransactionData(id, accountId, purchasedDate, numberOfShares, purchasedPrice, statusEnum, typeEnum,
-                    amount, chargeAmount, amountPaid,useSavings);
+                    amount, chargeAmount, amountPaid, useSavings);
         }
 
         public String schema() {

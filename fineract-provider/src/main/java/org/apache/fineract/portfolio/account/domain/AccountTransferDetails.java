@@ -72,8 +72,6 @@ public class AccountTransferDetails extends AbstractPersistableCustom {
     @JoinColumn(name = "from_share_account_id", nullable = true)
     private ShareAccount fromShareAccount;
 
-
-
     @ManyToOne
     @JoinColumn(name = "to_loan_account_id", nullable = true)
     private Loan toLoanAccount;
@@ -96,34 +94,34 @@ public class AccountTransferDetails extends AbstractPersistableCustom {
             Integer transferType) {
 
         return new AccountTransferDetails(fromOffice, fromClient, fromSavingsAccount, null, toOffice, toClient, toSavingsAccount, null,
-                transferType, null,null,null);
+                transferType, null, null, null);
     }
 
     public static AccountTransferDetails savingsToLoanTransfer(final Office fromOffice, final Client fromClient,
             final SavingsAccount fromSavingsAccount, final Office toOffice, final Client toClient, final Loan toLoanAccount,
             Integer transferType) {
         return new AccountTransferDetails(fromOffice, fromClient, fromSavingsAccount, null, toOffice, toClient, null, toLoanAccount,
-                transferType, null,null,null);
+                transferType, null, null, null);
     }
 
     public static AccountTransferDetails savingsToSharesTransfer(final Office fromOffice, final Client fromClient,
-                                                               final SavingsAccount fromSavingsAccount, final Office toOffice, final Client toClient, final ShareAccount toShareAccount,
-                                                               Integer transferType) {
-        return new AccountTransferDetails(fromOffice, fromClient, fromSavingsAccount, null, toOffice, toClient, null, null,
-                transferType, null,null,toShareAccount);
+            final SavingsAccount fromSavingsAccount, final Office toOffice, final Client toClient, final ShareAccount toShareAccount,
+            Integer transferType) {
+        return new AccountTransferDetails(fromOffice, fromClient, fromSavingsAccount, null, toOffice, toClient, null, null, transferType,
+                null, null, toShareAccount);
     }
 
     public static AccountTransferDetails sharesToSharesTransfer(final Office fromOffice, final Client fromClient,
-                                                                 final ShareAccount fromShareAccount, final Office toOffice, final Client toClient, final ShareAccount toShareAccount,
-                                                                 Integer transferType) {
-        return new AccountTransferDetails(fromOffice, fromClient, null, null, toOffice, toClient, null, null,
-                transferType, null,fromShareAccount,toShareAccount);
+            final ShareAccount fromShareAccount, final Office toOffice, final Client toClient, final ShareAccount toShareAccount,
+            Integer transferType) {
+        return new AccountTransferDetails(fromOffice, fromClient, null, null, toOffice, toClient, null, null, transferType, null,
+                fromShareAccount, toShareAccount);
     }
 
     public static AccountTransferDetails loanTosavingsTransfer(final Office fromOffice, final Client fromClient, final Loan fromLoanAccount,
             final Office toOffice, final Client toClient, final SavingsAccount toSavingsAccount, Integer transferType) {
         return new AccountTransferDetails(fromOffice, fromClient, null, fromLoanAccount, toOffice, toClient, toSavingsAccount, null,
-                transferType, null,null,null);
+                transferType, null, null, null);
     }
 
     protected AccountTransferDetails() {
@@ -133,7 +131,8 @@ public class AccountTransferDetails extends AbstractPersistableCustom {
     private AccountTransferDetails(final Office fromOffice, final Client fromClient, final SavingsAccount fromSavingsAccount,
             final Loan fromLoanAccount, final Office toOffice, final Client toClient, final SavingsAccount toSavingsAccount,
             final Loan toLoanAccount, final Integer transferType,
-            final AccountTransferStandingInstruction accountTransferStandingInstruction,final ShareAccount fromShareAccount,final ShareAccount toShareAccount) {
+            final AccountTransferStandingInstruction accountTransferStandingInstruction, final ShareAccount fromShareAccount,
+            final ShareAccount toShareAccount) {
         this.fromOffice = fromOffice;
         this.fromClient = fromClient;
         this.toShareAccount = toShareAccount;
@@ -183,6 +182,6 @@ public class AccountTransferDetails extends AbstractPersistableCustom {
     public static AccountTransferDetails loanToLoanTransfer(Office fromOffice, Client fromClient, Loan fromLoanAccount, Office toOffice,
             Client toClient, Loan toLoanAccount, Integer transferType) {
         return new AccountTransferDetails(fromOffice, fromClient, null, fromLoanAccount, toOffice, toClient, null, toLoanAccount,
-                transferType, null,null,null);
+                transferType, null, null, null);
     }
 }

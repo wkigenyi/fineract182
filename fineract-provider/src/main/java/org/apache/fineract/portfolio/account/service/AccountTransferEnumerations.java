@@ -52,6 +52,10 @@ public final class AccountTransferEnumerations {
                     optionData = new EnumOptionData(PortfolioAccountType.SAVINGS.getValue().longValue(),
                             PortfolioAccountType.SAVINGS.getCode(), "Savings Account");
                 break;
+                case SHARES:
+                    optionData = new EnumOptionData(PortfolioAccountType.SHARES.getValue().longValue(),
+                            PortfolioAccountType.SAVINGS.getCode(), "Shares Account");
+                break;
             }
         }
 
@@ -76,6 +80,7 @@ public final class AccountTransferEnumerations {
                     optionData = new EnumOptionData(AccountTransferRecurrenceType.AS_PER_DUES.getValue().longValue(),
                             AccountTransferRecurrenceType.AS_PER_DUES.getCode(), "As Per Dues Recurrence");
                 break;
+
             }
         }
         return optionData;
@@ -106,6 +111,11 @@ public final class AccountTransferEnumerations {
                 case INTEREST_TRANSFER:
                     optionData = new EnumOptionData(AccountTransferType.INTEREST_TRANSFER.getValue().longValue(),
                             AccountTransferType.INTEREST_TRANSFER.getCode(), "Interest Transfer");
+                break;
+                case SHARE_PURCHASE:
+                    optionData = new EnumOptionData(AccountTransferType.SHARE_PURCHASE.getValue().longValue(),
+                            AccountTransferType.SHARE_PURCHASE.getCode(), "Share Purchase");
+
                 break;
             }
         }

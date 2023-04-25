@@ -46,6 +46,12 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.portfolio.account.domain.AccountTransferDetailAssembler;
+import org.apache.fineract.portfolio.account.domain.AccountTransferDetailRepository;
+import org.apache.fineract.portfolio.account.domain.AccountTransferDetails;
+import org.apache.fineract.portfolio.account.domain.AccountTransferRepository;
+import org.apache.fineract.portfolio.account.domain.AccountTransferTransaction;
+import org.apache.fineract.portfolio.account.domain.AccountTransferType;
 import org.apache.fineract.portfolio.accounts.constants.ShareAccountApiConstants;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
@@ -56,8 +62,12 @@ import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.loanproduct.exception.InvalidCurrencyException;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
+import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountNotFoundException;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountReadPlatformService;
 import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
@@ -82,6 +92,10 @@ public class ShareAccountDataSerializer {
 
     private final FromJsonHelper fromApiJsonHelper;
 
+    private final SavingsAccountAssembler savingsAccountAssembler;
+
+    private final SavingsAccountDomainService savingsAccountDomainService;
+
     private final ChargeRepositoryWrapper chargeRepository;
 
     private final SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper;
@@ -91,6 +105,10 @@ public class ShareAccountDataSerializer {
     private final ShareProductRepositoryWrapper shareProductRepository;
 
     private final SavingsAccountReadPlatformService savingsAccountReadPlatformService;
+    private final AccountTransferDetailRepository accountTransferDetailRepository;
+    private final AccountTransferRepository accountTransferRepository;
+
+    private final AccountTransferDetailAssembler accountTransferDetailAssembler;
 
     private static final Set<String> approvalParameters = new HashSet<>(
             Arrays.asList(ShareAccountApiConstants.locale_paramname, ShareAccountApiConstants.dateformat_paramname,
@@ -104,16 +122,25 @@ public class ShareAccountDataSerializer {
                     ShareAccountApiConstants.closeddate_paramname, ShareAccountApiConstants.note_paramname));
 
     private static final Set<String> additionalSharesParameters = new HashSet<>(
-            Arrays.asList(ShareAccountApiConstants.locale_paramname,
-            ShareAccountApiConstants.requesteddate_paramname, ShareAccountApiConstants.requestedshares_paramname,
-            ShareAccountApiConstants.purchasedprice_paramname, ShareAccountApiConstants.dateformat_paramname,ShareAccountApiConstants.use_savings));
+            Arrays.asList(ShareAccountApiConstants.locale_paramname, ShareAccountApiConstants.requesteddate_paramname,
+                    ShareAccountApiConstants.requestedshares_paramname, ShareAccountApiConstants.purchasedprice_paramname,
+                    ShareAccountApiConstants.dateformat_paramname, ShareAccountApiConstants.use_savings));
 
     @Autowired
     public ShareAccountDataSerializer(final PlatformSecurityContext platformSecurityContext, final FromJsonHelper fromApiJsonHelper,
             final ChargeRepositoryWrapper chargeRepository, final SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper,
             final ClientRepositoryWrapper clientRepositoryWrapper, final ShareProductRepositoryWrapper shareProductRepository,
-            final SavingsAccountReadPlatformService savingsAccountReadPlatformService) {
+            final SavingsAccountReadPlatformService savingsAccountReadPlatformService,
+            final SavingsAccountDomainService savingsAccountDomainService, final SavingsAccountAssembler savingsAccountAssembler,
+            final AccountTransferDetailAssembler accountTransferDetailAssembler,
+            final AccountTransferDetailRepository accountTransferDetailRepository,
+            final AccountTransferRepository accountTransferRepository) {
+        this.savingsAccountAssembler = savingsAccountAssembler;
+        this.accountTransferRepository = accountTransferRepository;
+        this.accountTransferDetailRepository = accountTransferDetailRepository;
+        this.accountTransferDetailAssembler = accountTransferDetailAssembler;
         this.platformSecurityContext = platformSecurityContext;
+        this.savingsAccountDomainService = savingsAccountDomainService;
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.chargeRepository = chargeRepository;
         this.savingsAccountRepositoryWrapper = savingsAccountRepositoryWrapper;
@@ -134,10 +161,6 @@ public class ShareAccountDataSerializer {
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("sharesaccount");
         JsonElement element = jsonCommand.parsedJson();
 
-        boolean useSavings = false;
-        if(jsonCommand.hasParameter(ShareAccountApiConstants.use_savings)){
-            useSavings = this.fromApiJsonHelper.extractBooleanNamed(ShareAccountApiConstants.use_savings,element);
-        }
         final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(element.getAsJsonObject());
         final Long clientId = this.fromApiJsonHelper.extractLongNamed(ShareAccountApiConstants.clientid_paramname, element);
         final Long productId = this.fromApiJsonHelper.extractLongNamed(ShareAccountApiConstants.productid_paramname, element);
@@ -196,6 +219,10 @@ public class ShareAccountDataSerializer {
                 shareProduct.getCurrency().getCode())) {
             throw new SavingsAccountNotFoundException(savingsAccountId);
         }
+        boolean useSavings = false;
+        if (jsonCommand.hasParameter(ShareAccountApiConstants.use_savings)) {
+            useSavings = jsonCommand.booleanObjectValueOfParameterNamed(ShareAccountApiConstants.use_savings);
+        }
         SavingsAccount savingsAccount = this.savingsAccountRepositoryWrapper.findOneWithNotFoundDetection(savingsAccountId,
                 DepositAccountType.SAVINGS_DEPOSIT);
         final MonetaryCurrency currency = shareProduct.getCurrency();
@@ -216,7 +243,7 @@ public class ShareAccountDataSerializer {
         Long approvedShares = null;
         Long pendingShares = requestedShares;
         BigDecimal unitPrice = shareProduct.deriveMarketPrice(applicationDate);
-        ShareAccountTransaction transaction = new ShareAccountTransaction(applicationDate, requestedShares, unitPrice,useSavings);
+        ShareAccountTransaction transaction = new ShareAccountTransaction(applicationDate, requestedShares, unitPrice, useSavings);
         Set<ShareAccountTransaction> sharesPurchased = new HashSet<>();
         sharesPurchased.add(transaction);
 
@@ -699,8 +726,8 @@ public class ShareAccountDataSerializer {
         }
         LocalDate requestedDate = this.fromApiJsonHelper.extractLocalDateNamed(ShareAccountApiConstants.requesteddate_paramname, element);
         boolean useSavings = false;
-        if(jsonCommand.hasParameter(ShareAccountApiConstants.use_savings)){
-            useSavings = this.fromApiJsonHelper.extractBooleanNamed(ShareAccountApiConstants.use_savings,element);
+        if (jsonCommand.hasParameter(ShareAccountApiConstants.use_savings)) {
+            useSavings = this.fromApiJsonHelper.extractBooleanNamed(ShareAccountApiConstants.use_savings, element);
         }
         baseDataValidator.reset().parameter(ShareAccountApiConstants.requesteddate_paramname).value(requestedDate).notNull();
         final Long sharesRequested = this.fromApiJsonHelper.extractLongNamed(ShareAccountApiConstants.requestedshares_paramname, element);
@@ -734,7 +761,7 @@ public class ShareAccountDataSerializer {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
         final BigDecimal unitPrice = shareProduct.deriveMarketPrice(requestedDate);
-        ShareAccountTransaction purchaseTransaction = new ShareAccountTransaction(requestedDate, sharesRequested, unitPrice,useSavings);
+        ShareAccountTransaction purchaseTransaction = new ShareAccountTransaction(requestedDate, sharesRequested, unitPrice, useSavings);
         account.addAdditionalPurchasedShares(purchaseTransaction);
         handleAdditionalSharesChargeTransactions(account, purchaseTransaction);
         actualChanges.put(ShareAccountApiConstants.additionalshares_paramname, purchaseTransaction);
@@ -774,9 +801,14 @@ public class ShareAccountDataSerializer {
                 final Long purchasedSharesId = this.fromApiJsonHelper.extractLongNamed(ShareAccountApiConstants.id_paramname, arrayElement);
                 baseDataValidator.reset().parameter(ShareAccountApiConstants.requestedshares_paramname).value(purchasedSharesId).notBlank();
                 ShareAccountTransaction transaction = account.retrievePurchasedShares(purchasedSharesId);
+
                 if (transaction != null) {
                     validateTotalSubsribedShares(account, transaction, baseDataValidator);
                     totalShares += transaction.getTotalShares().longValue();
+
+                    if (transaction.isUseSavingsTransactions()) {
+                        transferAmountForPurchaseShares(transaction, jsonCommand);
+                    }
                     transaction.approve();
                     updateTotalChargeDerivedForAdditonalShares(account, transaction);
                 }
@@ -791,6 +823,27 @@ public class ShareAccountDataSerializer {
         }
         actualChanges.put(ShareAccountApiConstants.requestedshares_paramname, purchasedShares);
         return actualChanges;
+    }
+
+    private void transferAmountForPurchaseShares(ShareAccountTransaction sharePurchase, JsonCommand jsonCommand) {
+        DateTimeFormatter fmt = DateTimeFormatter
+                .ofPattern(jsonCommand.stringValueOfParameterNamed(ShareAccountApiConstants.dateformat_paramname));
+        SavingsTransactionBooleanValues booleanValues = new SavingsTransactionBooleanValues(true, false, false, false, false);
+        SavingsAccount fromAccount = this.savingsAccountAssembler.assembleFrom(sharePurchase.getShareAccount().getSavingsAccount().getId(),
+                false);
+        SavingsAccountTransaction withdrawal = this.savingsAccountDomainService.handleWithdrawal(fromAccount, fmt,
+                sharePurchase.getPurchasedDate(), sharePurchase.amount(), null, booleanValues, false);
+        final AccountTransferDetails accountTransferDetails = this.accountTransferDetailAssembler.assembleSavingsToSharesTransfer(
+                fromAccount, sharePurchase.getShareAccount(), AccountTransferType.SHARE_PURCHASE.getValue());
+        this.accountTransferDetailRepository.saveAndFlush(accountTransferDetails);
+
+        AccountTransferTransaction transferTransaction = AccountTransferTransaction.savingsToSharesTransfer(
+
+                accountTransferDetails, withdrawal, sharePurchase, sharePurchase.getPurchasedDate(),
+                Money.of(sharePurchase.getShareAccount().getCurrency(), sharePurchase.amount()), "Share Purchase");
+        this.accountTransferRepository.saveAndFlush(transferTransaction);
+        // Long transferDetailsId = accountTransferDetails.getId();
+
     }
 
     private void updateTotalChargeDerivedForAdditonalShares(final ShareAccount shareAccount, final ShareAccountTransaction transaction) {

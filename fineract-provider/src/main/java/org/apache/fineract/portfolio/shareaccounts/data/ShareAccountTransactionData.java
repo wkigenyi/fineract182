@@ -50,7 +50,7 @@ public class ShareAccountTransactionData implements Serializable {
 
     public ShareAccountTransactionData(final Long id, final Long accountId, final LocalDate purchasedDate, final Long numberOfShares,
             final BigDecimal purchasedPrice, final EnumOptionData status, final EnumOptionData type, final BigDecimal amount,
-            final BigDecimal chargeAmount, final BigDecimal amountPaid,final Boolean useSavings) {
+            final BigDecimal chargeAmount, final BigDecimal amountPaid, final Boolean useSavings) {
         this.id = id;
         this.accountId = accountId;
         this.purchasedDate = purchasedDate;
@@ -81,7 +81,9 @@ public class ShareAccountTransactionData implements Serializable {
         return this.status;
     }
 
-    public Boolean isUseSavings(){ return  this.useSavings; }
+    public Boolean isUseSavings() {
+        return this.useSavings;
+    }
 
     public EnumOptionData getType() {
         return this.type;

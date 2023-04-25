@@ -243,7 +243,7 @@ public class ShareAccount extends AbstractPersistableCustom {
         return returnValue;
     }
 
-    public SavingsAccount getSavingsAccount(){
+    public SavingsAccount getSavingsAccount() {
         return savingsAccount;
     }
 
