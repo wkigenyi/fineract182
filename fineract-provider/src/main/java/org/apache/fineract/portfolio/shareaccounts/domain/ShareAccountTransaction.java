@@ -182,6 +182,10 @@ public class ShareAccountTransaction extends AbstractPersistableCustom {
                 && this.type.equals(PurchasedSharesStatusType.PURCHASED.getValue());
     }
 
+    public ShareAccount getShareAccount(){
+        return shareAccount;
+    }
+
     public boolean isUseSavingsTransactions(){
         return this.useSavings;
     }

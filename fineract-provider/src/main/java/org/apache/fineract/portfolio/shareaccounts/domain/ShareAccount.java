@@ -243,6 +243,10 @@ public class ShareAccount extends AbstractPersistableCustom {
         return returnValue;
     }
 
+    public SavingsAccount getSavingsAccount(){
+        return savingsAccount;
+    }
+
     public boolean setPurchasedShares(Set<ShareAccountTransaction> purchasedShares) {
         this.shareAccountTransactions = purchasedShares;
         return true;
