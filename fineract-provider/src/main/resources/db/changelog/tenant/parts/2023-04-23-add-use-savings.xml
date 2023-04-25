@@ -34,5 +34,41 @@
             <column name="use_savings" type="boolean" defaultValue="false"/>
         </addColumn>
     </changeSet>
+    <changeSet id="2" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_account_transfer_transaction" columnName="to_share_transaction_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_account_transfer_transaction">
+            <column name="to_share_transaction_id" type="bigint">
+                <constraints foreignKeyName="FK_share_trans_acc_transfer" referencedTableName="m_share_account_transactions" referencedColumnNames="id" nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="3" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_account_transfer_details" columnName="to_share_account_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_account_transfer_details">
+            <column name="to_share_account_id" type="bigint">
+                <constraints foreignKeyName="FK_share_acc_acc_transfer" referencedTableName="m_share_account" referencedColumnNames="id" nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="4" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_account_transfer_details" columnName="from_share_account_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_account_transfer_details">
+            <column name="from_share_account_id" type="bigint">
+                <constraints foreignKeyName="FK_fshare_acc_acc_transfer" referencedTableName="m_share_account" referencedColumnNames="id" nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
 
 </databaseChangeLog>
