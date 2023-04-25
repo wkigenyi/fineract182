@@ -30,8 +30,6 @@ public interface AccountTransfersWritePlatformService {
 
     CommandProcessingResult create(JsonCommand command);
 
-    CommandProcessingResult createTransferForSharePurchase(JsonCommand command);
-
     void reverseTransfersWithFromAccountType(Long accountNumber, PortfolioAccountType accountTypeId);
 
     Long transferFunds(AccountTransferDTO accountTransferDTO);
