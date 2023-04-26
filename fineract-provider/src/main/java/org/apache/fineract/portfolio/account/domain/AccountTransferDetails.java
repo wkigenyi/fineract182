@@ -111,6 +111,8 @@ public class AccountTransferDetails extends AbstractPersistableCustom {
                 null, null, toShareAccount);
     }
 
+
+
     public static AccountTransferDetails sharesToSharesTransfer(final Office fromOffice, final Client fromClient,
             final ShareAccount fromShareAccount, final Office toOffice, final Client toClient, final ShareAccount toShareAccount,
             Integer transferType) {
@@ -169,6 +171,14 @@ public class AccountTransferDetails extends AbstractPersistableCustom {
 
     public Loan fromLoanAccount() {
         return this.fromLoanAccount;
+    }
+
+    public ShareAccount getFromShareAccount(){
+        return this.fromShareAccount;
+    }
+
+    public ShareAccount getToShareAccount(){
+        return this.toShareAccount;
     }
 
     public AccountTransferStandingInstruction accountTransferStandingInstruction() {
