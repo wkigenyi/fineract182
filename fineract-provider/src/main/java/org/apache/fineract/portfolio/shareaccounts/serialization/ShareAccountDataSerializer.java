@@ -46,6 +46,8 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.portfolio.account.AccountDetailConstants;
+import org.apache.fineract.portfolio.account.api.AccountTransfersApiConstants;
 import org.apache.fineract.portfolio.account.domain.AccountTransferDetailAssembler;
 import org.apache.fineract.portfolio.account.domain.AccountTransferDetailRepository;
 import org.apache.fineract.portfolio.account.domain.AccountTransferDetails;
@@ -125,6 +127,14 @@ public class ShareAccountDataSerializer {
             Arrays.asList(ShareAccountApiConstants.locale_paramname, ShareAccountApiConstants.requesteddate_paramname,
                     ShareAccountApiConstants.requestedshares_paramname, ShareAccountApiConstants.purchasedprice_paramname,
                     ShareAccountApiConstants.dateformat_paramname, ShareAccountApiConstants.use_savings));
+
+    private static final Set<String> shareTransferParameters = new HashSet<>(
+            Arrays.asList(AccountDetailConstants.localeParamName, AccountDetailConstants.dateFormatParamName,
+                    AccountDetailConstants.fromOfficeIdParamName, AccountDetailConstants.fromClientIdParamName, AccountDetailConstants.fromAccountIdParamName,
+                    AccountDetailConstants.toOfficeIdParamName, AccountDetailConstants.toClientIdParamName, AccountDetailConstants.toAccountIdParamName,
+                    AccountDetailConstants.transferTypeParamName,AccountTransfersApiConstants.transferDateParamName,AccountTransfersApiConstants.transferDescriptionParamName,
+                    AccountDetailConstants.fromAccountTypeParamName,AccountDetailConstants.toAccountTypeParamName,
+                    AccountTransfersApiConstants.transferAmountParamName));
 
     @Autowired
     public ShareAccountDataSerializer(final PlatformSecurityContext platformSecurityContext, final FromJsonHelper fromApiJsonHelper,
@@ -716,6 +726,7 @@ public class ShareAccountDataSerializer {
         if (StringUtils.isBlank(jsonCommand.json())) {
             throw new InvalidJsonException();
         }
+
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(), additionalSharesParameters);
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
@@ -765,6 +776,88 @@ public class ShareAccountDataSerializer {
         account.addAdditionalPurchasedShares(purchaseTransaction);
         handleAdditionalSharesChargeTransactions(account, purchaseTransaction);
         actualChanges.put(ShareAccountApiConstants.additionalshares_paramname, purchaseTransaction);
+        return actualChanges;
+    }
+
+    public Map<String, Object> validateSharesTransfer(JsonCommand jsonCommand, ShareAccount fromAccount,ShareAccount toAccount, boolean checkingValidity) {
+        Map<String, Object> actualChanges = new HashMap<>();
+        if (StringUtils.isBlank(jsonCommand.json())) {
+            throw new InvalidJsonException();
+        }
+
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, jsonCommand.json(),shareTransferParameters);
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("sharesaccount");
+        JsonElement element = jsonCommand.parsedJson();
+        if (!toAccount.status().equals(ShareAccountStatusType.ACTIVE.getValue())) {
+            baseDataValidator.failWithCodeNoParameterAddedToErrorCode("is.not.in.active.state");
+        }
+        LocalDate requestedDate = this.fromApiJsonHelper.extractLocalDateNamed(AccountTransfersApiConstants.transferDateParamName, element);
+
+        baseDataValidator.reset().parameter(ShareAccountApiConstants.requesteddate_paramname).value(requestedDate).notNull();
+        final Long sharesRequested = this.fromApiJsonHelper.extractLongNamed(AccountTransfersApiConstants.transferAmountParamName, element);
+        baseDataValidator.reset().parameter(ShareAccountApiConstants.requestedshares_paramname).value(sharesRequested).notNull();
+        ShareProduct shareProduct = toAccount.getShareProduct();
+        if (sharesRequested != null) {
+            Long totalSharesAfterapproval = toAccount.getTotalApprovedShares() + sharesRequested;
+            if (shareProduct.getMaximumClientShares() != null && totalSharesAfterapproval > shareProduct.getMaximumClientShares()) {
+                baseDataValidator.reset().parameter(ShareAccountApiConstants.requestedshares_paramname).value(sharesRequested).failWithCode(
+                        "exceeding.maximum.limit.defined.in.the.shareproduct",
+                        "Existing and requested shares count is more than product definition");
+            }
+        }
+        boolean isPurchaseTransactionBeforeExistingTransactions = false;
+        Set<ShareAccountTransaction> transactions = toAccount.getShareAccountTransactions();
+        for (ShareAccountTransaction transaction : transactions) {
+            if (!transaction.isChargeTransaction()) {
+                LocalDate transactionDate = transaction.getPurchasedDate();
+                if (requestedDate.isBefore(transactionDate)) {
+                    isPurchaseTransactionBeforeExistingTransactions = true;
+                    break;
+                }
+            }
+        }
+        if (isPurchaseTransactionBeforeExistingTransactions) {
+            baseDataValidator.reset().parameter(ShareAccountApiConstants.requesteddate_paramname).value(requestedDate)
+                    .failWithCodeNoParameterAddedToErrorCode("purchase.transaction.date.cannot.be.before.existing.transactions");
+        }
+
+        // TODO: Validate for redeem
+        boolean isRedeemTransactionBeforeExistingTransactions = false;
+        Set<ShareAccountTransaction> transactionsForSellingAccount = fromAccount.getShareAccountTransactions();
+        for (ShareAccountTransaction transaction : transactionsForSellingAccount) {
+            if (!transaction.isChargeTransaction()) {
+                LocalDate transactionDate = transaction.getPurchasedDate();
+                if (requestedDate.isBefore(transactionDate)) {
+                    isRedeemTransactionBeforeExistingTransactions = true;
+                    break;
+                }
+            }
+        }
+        if (isRedeemTransactionBeforeExistingTransactions) {
+            baseDataValidator.reset().parameter(ShareAccountApiConstants.requesteddate_paramname).value(requestedDate)
+                    .failWithCodeNoParameterAddedToErrorCode("purchase.redeem.date.cannot.be.before.existing.transactions");
+        }
+
+
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+        if(!checkingValidity) {
+            final BigDecimal unitPrice = shareProduct.deriveMarketPrice(requestedDate);
+            ShareAccountTransaction redeemTransaction = ShareAccountTransaction.createRedeemTransaction(requestedDate, sharesRequested, unitPrice);
+            validateRedeemRequest(fromAccount, redeemTransaction, baseDataValidator, dataValidationErrors);
+            fromAccount.addAdditionalPurchasedShares(redeemTransaction);
+
+            ShareAccountTransaction purchaseTransaction = new ShareAccountTransaction(requestedDate, sharesRequested, unitPrice, false);
+
+            toAccount.addAdditionalPurchasedShares(purchaseTransaction);
+            handleAdditionalSharesChargeTransactions(toAccount, purchaseTransaction);
+            actualChanges.put(ShareAccountApiConstants.additionalshares_paramname, purchaseTransaction);
+            actualChanges.put(AccountTransfersApiConstants.fromTransaction,redeemTransaction);
+            actualChanges.put(AccountTransfersApiConstants.toTransaction,purchaseTransaction);
+        }
         return actualChanges;
     }
 

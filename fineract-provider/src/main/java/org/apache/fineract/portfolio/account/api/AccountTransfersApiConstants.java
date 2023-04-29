@@ -38,6 +38,9 @@ public final class AccountTransfersApiConstants {
     public static final String transferDescriptionParamName = "transferDescription";
     public static final String currencyParamName = "currency";
 
+    public static final String fromTransaction = "fromTransaction";
+    public static final String toTransaction = "toTransaction";
+
     /**
      * These parameters will match the class level parameters of {@link AccountTransferData}. Where possible, we try to
      * get response parameters to match those of request parameters.

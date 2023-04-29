@@ -28,6 +28,8 @@ import static org.apache.fineract.portfolio.account.api.AccountTransfersApiConst
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +39,7 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.portfolio.account.PortfolioAccountType;
+import org.apache.fineract.portfolio.account.api.AccountTransfersApiConstants;
 import org.apache.fineract.portfolio.account.data.AccountTransferDTO;
 import org.apache.fineract.portfolio.account.data.AccountTransfersDataValidator;
 import org.apache.fineract.portfolio.account.domain.AccountTransferAssembler;
@@ -63,6 +66,12 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountRepository;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountTransaction;
+import org.apache.fineract.portfolio.shareaccounts.serialization.ShareAccountDataSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,10 +86,16 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
     private final SavingsAccountDomainService savingsAccountDomainService;
     private final LoanAssembler loanAccountAssembler;
     private final LoanAccountDomainService loanAccountDomainService;
+
+    private final Logger LOG = LoggerFactory.getLogger(AccountTransfersWritePlatformServiceImpl.class);
     private final SavingsAccountWritePlatformService savingsAccountWritePlatformService;
     private final AccountTransferDetailRepository accountTransferDetailRepository;
     private final LoanReadPlatformService loanReadPlatformService;
     private final GSIMRepositoy gsimRepository;
+
+    private final ShareAccountDataSerializer shareAccountDataSerializer;
+
+    private final ShareAccountRepository shareAccountRepository;
     private final ConfigurationDomainService configurationDomainService;
 
     @Autowired
@@ -90,10 +105,12 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
             final LoanAssembler loanAssembler, final LoanAccountDomainService loanAccountDomainService,
             final SavingsAccountWritePlatformService savingsAccountWritePlatformService,
             final AccountTransferDetailRepository accountTransferDetailRepository, final LoanReadPlatformService loanReadPlatformService,
-            final GSIMRepositoy gsimRepository, ConfigurationDomainService configurationDomainService) {
+            final GSIMRepositoy gsimRepository, ConfigurationDomainService configurationDomainService,ShareAccountRepository shareAccountRepository,final ShareAccountDataSerializer shareAccountDataSerializer) {
         this.accountTransfersDataValidator = accountTransfersDataValidator;
+        this.shareAccountRepository = shareAccountRepository;
         this.accountTransferAssembler = accountTransferAssembler;
         this.accountTransferRepository = accountTransferRepository;
+        this.shareAccountDataSerializer = shareAccountDataSerializer;
         this.savingsAccountAssembler = savingsAccountAssembler;
         this.savingsAccountDomainService = savingsAccountDomainService;
         this.loanAccountAssembler = loanAssembler;
@@ -130,8 +147,11 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
         boolean isInterestTransfer = false;
         boolean isAccountTransfer = true;
         Long fromLoanAccountId = null;
+        Long fromShareAccountId = null;
+        Long toShareAccountId = null;
         boolean isWithdrawBalance = false;
         final boolean backdatedTxnsAllowedTill = false;
+
 
         if (isSavingsToSavingsAccountTransfer(fromAccountType, toAccountType)) {
 
@@ -207,6 +227,20 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
             this.accountTransferDetailRepository.saveAndFlush(accountTransferDetails);
             transferDetailId = accountTransferDetails.getId();
 
+        } else if(isSharesToSharesAccountTransfer(fromAccountType,toAccountType)){
+            Map<String,Object> changes = new HashMap<>();
+            fromShareAccountId = command.longValueOfParameterNamed(fromAccountIdParamName);
+            final ShareAccount fromShareAccount = this.shareAccountRepository.getReferenceById(fromShareAccountId);
+            toShareAccountId = command.longValueOfParameterNamed(toAccountIdParamName);
+            final ShareAccount toShareAccount = this.shareAccountRepository.getReferenceById(toShareAccountId);
+            this.shareAccountDataSerializer.validateSharesTransfer(command,fromShareAccount,toShareAccount,true);
+            changes = this.shareAccountDataSerializer.validateSharesTransfer(command,fromShareAccount,toShareAccount,false);
+            ShareAccountTransaction redeemTransaction = (ShareAccountTransaction) changes.get(AccountTransfersApiConstants.fromTransaction);
+            ShareAccountTransaction purchaseTransaction = (ShareAccountTransaction) changes.get(AccountTransfersApiConstants.toTransaction);
+            final AccountTransferDetails accountTransferDetails = this.accountTransferAssembler.assembleSharesToSharesTransfer(command,
+                    fromShareAccount,toShareAccount,redeemTransaction,purchaseTransaction);
+            this.accountTransferDetailRepository.saveAndFlush(accountTransferDetails);
+            transferDetailId = accountTransferDetails.getId();
         }
 
         final CommandProcessingResultBuilder builder = new CommandProcessingResultBuilder().withEntityId(transferDetailId);
@@ -446,7 +480,10 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
                 gsim.setParentDeposit(newBalance);
                 gsimRepository.save(gsim);
             }
-        } else {
+        } else if(isSharesToSharesAccountTransfer(accountTransferDTO.getFromAccountType(),accountTransferDTO.getToAccountType())){
+            // TODO: DO the redeem and purchase
+            LOG.warn("We are dealing with Shares to Shares");
+        }else {
             throw new GeneralPlatformDomainRuleException("error.msg.accounttransfer.loan.to.loan.not.supported",
                     "Account transfer from loan to another loan is not supported");
         }
@@ -508,6 +545,10 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
     private boolean isSavingsToSavingsAccountTransfer(final PortfolioAccountType fromAccountType,
             final PortfolioAccountType toAccountType) {
         return fromAccountType.isSavingsAccount() && toAccountType.isSavingsAccount();
+    }
+
+    private boolean isSharesToSharesAccountTransfer(final PortfolioAccountType fromAccountType,final PortfolioAccountType toAccountType){
+        return fromAccountType.isShareAccount() && toAccountType.isShareAccount();
     }
 
     @Override

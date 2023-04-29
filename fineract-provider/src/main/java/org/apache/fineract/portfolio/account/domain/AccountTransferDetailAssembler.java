@@ -193,6 +193,18 @@ public class AccountTransferDetailAssembler {
 
     }
 
+    public AccountTransferDetails assembleSharesToSharesTransfer(final ShareAccount fromShareAccount,
+                                                                  final ShareAccount toShareAccount, Integer transferType) {
+        final Office fromOffice = fromShareAccount.getClient().getOffice();
+        final Client fromClient = fromShareAccount.getClient();
+        final Office toOffice = toShareAccount.getClient().getOffice();
+        final Client toClient = toShareAccount.getClient();
+
+        return AccountTransferDetails.sharesToSharesTransfer(fromOffice, fromClient, fromShareAccount, toOffice, toClient,
+                toShareAccount, transferType);
+
+    }
+
     public AccountTransferDetails assembleSavingsToSavingsTransfer(final SavingsAccount fromSavingsAccount,
             final SavingsAccount toSavingsAccount, Integer transferType) {
         final Office fromOffice = fromSavingsAccount.office();

@@ -46,6 +46,18 @@
             </column>
         </addColumn>
     </changeSet>
+    <changeSet id="5" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_account_transfer_transaction" columnName="from_share_transaction_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_account_transfer_transaction">
+            <column name="from_share_transaction_id" type="bigint">
+                <constraints foreignKeyName="FK_share_redeem_acc_transfer" referencedTableName="m_share_account_transactions" referencedColumnNames="id" nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
     <changeSet id="3" author="fineract">
         <preConditions onFail="MARK_RAN">
             <not>

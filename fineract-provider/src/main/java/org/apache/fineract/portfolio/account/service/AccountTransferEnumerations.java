@@ -117,6 +117,11 @@ public final class AccountTransferEnumerations {
                             AccountTransferType.SHARE_PURCHASE.getCode(), "Share Purchase");
 
                 break;
+                case SHARE_TRANSFER:
+                    optionData = new EnumOptionData(AccountTransferType.SHARE_TRANSFER.getValue().longValue(),
+                            AccountTransferType.SHARE_PURCHASE.getCode(), "Share Transfer");
+
+                    break;
             }
         }
         return optionData;

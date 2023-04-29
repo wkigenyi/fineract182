@@ -67,7 +67,7 @@ public class AccountTransferAssembler {
             final ShareAccount toShareAccount, final SavingsAccountTransaction withdrawal, final ShareAccountTransaction sharePurchase) {
 
         final AccountTransferDetails accountTransferDetails = this.accountTransferDetailAssembler
-                .assembleSavingsToSharesTransfer(fromSavingsAccount, toShareAccount, 1);
+                .assembleSavingsToSharesTransfer(fromSavingsAccount, toShareAccount, 5);
 
         final LocalDate transactionDate = command.localDateValueOfParameterNamed(transferDateParamName);
         final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed(transferAmountParamName);
@@ -76,6 +76,28 @@ public class AccountTransferAssembler {
         final String description = command.stringValueOfParameterNamed(transferDescriptionParamName);
         AccountTransferTransaction accountTransferTransaction = AccountTransferTransaction.savingsToSharesTransfer(accountTransferDetails,
                 withdrawal, sharePurchase, transactionDate, transactionMonetaryAmount, description);
+        accountTransferDetails.addAccountTransferTransaction(accountTransferTransaction);
+        return accountTransferDetails;
+    }
+
+    public AccountTransferDetails assembleSharesToSharesTransfer(final JsonCommand command, final ShareAccount fromShareAccount,
+                                                                  final ShareAccount toShareAccount, final ShareAccountTransaction redeem, final ShareAccountTransaction sharePurchase) {
+
+        final AccountTransferDetails accountTransferDetails = this.accountTransferDetailAssembler
+                .assembleSharesToSharesTransfer(fromShareAccount, toShareAccount, 6);
+
+        final LocalDate transactionDate = command.localDateValueOfParameterNamed(transferDateParamName);
+
+
+
+        BigDecimal transactionAmount = sharePurchase.amount();
+
+
+        final Money transactionMonetaryAmount = Money.of(fromShareAccount.getCurrency(), transactionAmount);
+
+        final String description = command.stringValueOfParameterNamed(transferDescriptionParamName);
+        AccountTransferTransaction accountTransferTransaction = AccountTransferTransaction.sharesToSharesTransfer(accountTransferDetails,
+                redeem, sharePurchase, transactionDate, transactionMonetaryAmount, description);
         accountTransferDetails.addAccountTransferTransaction(accountTransferTransaction);
         return accountTransferDetails;
     }
