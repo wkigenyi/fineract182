@@ -99,6 +99,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
         this.businessEventNotifierService = businessEventNotifierService;
     }
 
+
     @Override
     public CommandProcessingResult createShareAccount(JsonCommand jsonCommand) {
         try {
@@ -228,7 +229,6 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
             ShareAccount account = this.shareAccountRepository.findOneWithNotFoundDetection(accountId);
             Map<String, Object> changes = this.accountDataSerializer.validateAndApplyAdditionalShares(jsonCommand, account);
             ShareAccountTransaction transaction = null;
-            Boolean useSavings = false;
             if (!changes.isEmpty()) {
 
                 this.shareAccountRepository.saveAndFlush(account);
@@ -253,6 +253,34 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
             handleDataIntegrityIssues(jsonCommand, dve.getMostSpecificCause(), dve);
             return CommandProcessingResult.empty();
+        }
+    }
+
+    @Override
+    public ShareAccountTransaction applyAdditionalSharesByTransfer(final Long accountId, JsonCommand jsonCommand) {
+        try {
+            ShareAccount account = this.shareAccountRepository.findOneWithNotFoundDetection(accountId);
+            Map<String, Object> changes = this.accountDataSerializer.validateAndApplyAdditionalSharesForTransfer(jsonCommand, account);
+            ShareAccountTransaction transaction = null;
+            if (!changes.isEmpty()) {
+                this.shareAccountRepository.saveAndFlush(account);
+                transaction = (ShareAccountTransaction) changes.get(ShareAccountApiConstants.additionalshares_paramname);
+                transaction = account.getShareAccountTransaction(transaction);
+                if (transaction != null) {
+                    changes.clear();
+
+                    changes.put(ShareAccountApiConstants.additionalshares_paramname, transaction.getId());
+                    Set<ShareAccountTransaction> transactions = new HashSet<>();
+                    transactions.add(transaction);
+                    this.journalEntryWritePlatformService.createJournalEntriesForShares(populateJournalEntries(account, transactions));
+                }
+
+            }
+
+            return transaction;
+        } catch (final JpaSystemException | DataIntegrityViolationException dve) {
+            handleDataIntegrityIssues(jsonCommand, dve.getMostSpecificCause(), dve);
+            return null;
         }
     }
 
@@ -435,7 +463,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
     public CommandProcessingResult rejectAdditionalShares(Long accountId, JsonCommand jsonCommand) {
         try {
             ShareAccount account = this.shareAccountRepository.findOneWithNotFoundDetection(accountId);
-            Map<String, Object> changes = this.accountDataSerializer.validateAndRejectAddtionalShares(jsonCommand, account);
+            Map<String, Object> changes = this.accountDataSerializer.validateAndRejectAdditionalShares(jsonCommand, account);
             if (!changes.isEmpty()) {
                 this.shareAccountRepository.save(account);
                 ArrayList<Long> transactionIds = (ArrayList<Long>) changes.get(ShareAccountApiConstants.requestedshares_paramname);
@@ -492,6 +520,39 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
             handleDataIntegrityIssues(jsonCommand, dve.getMostSpecificCause(), dve);
             return CommandProcessingResult.empty();
+        }
+    }
+
+    @Override
+    public ShareAccountTransaction redeemSharesByTransfer(Long accountId, JsonCommand jsonCommand) {
+        try {
+            ShareAccount account = this.shareAccountRepository.findOneWithNotFoundDetection(accountId);
+            Map<String, Object> changes = this.accountDataSerializer.validateAndRedeemSharesForTransfer(jsonCommand, account);
+            ShareAccountTransaction redeem = null;
+            if (!changes.isEmpty()) {
+                this.shareAccountRepository.saveAndFlush(account);
+                redeem = (ShareAccountTransaction) changes
+                        .get(ShareAccountApiConstants.requestedshares_paramname);
+                // after saving, entity will have different object. So need to
+                // retrieve the entity object
+                redeem = account.getShareAccountTransaction(redeem);
+                Long redeemShares = redeem.getTotalShares();
+                ShareProduct shareProduct = account.getShareProduct();
+                // remove the redeem shares from total subscribed shares
+                shareProduct.removeSubscribedShares(redeemShares);
+                this.shareProductRepository.saveAndFlush(shareProduct);
+
+                Set<ShareAccountTransaction> transactions = new HashSet<>();
+                transactions.add(redeem);
+                this.journalEntryWritePlatformService.createJournalEntriesForShares(populateJournalEntries(account, transactions));
+                changes.clear();
+                changes.put(ShareAccountApiConstants.requestedshares_paramname, redeem.getId());
+
+            }
+            return redeem;
+        } catch (final JpaSystemException | DataIntegrityViolationException dve) {
+            handleDataIntegrityIssues(jsonCommand, dve.getMostSpecificCause(), dve);
+            return null;
         }
     }
 

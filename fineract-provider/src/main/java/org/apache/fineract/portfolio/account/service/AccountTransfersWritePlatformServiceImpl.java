@@ -28,8 +28,6 @@ import static org.apache.fineract.portfolio.account.api.AccountTransfersApiConst
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -39,7 +37,6 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.portfolio.account.PortfolioAccountType;
-import org.apache.fineract.portfolio.account.api.AccountTransfersApiConstants;
 import org.apache.fineract.portfolio.account.data.AccountTransferDTO;
 import org.apache.fineract.portfolio.account.data.AccountTransfersDataValidator;
 import org.apache.fineract.portfolio.account.domain.AccountTransferAssembler;
@@ -70,6 +67,7 @@ import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
 import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountRepository;
 import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountTransaction;
 import org.apache.fineract.portfolio.shareaccounts.serialization.ShareAccountDataSerializer;
+import org.apache.fineract.portfolio.shareaccounts.service.ShareAccountWritePlatformService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -96,6 +94,7 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
     private final ShareAccountDataSerializer shareAccountDataSerializer;
 
     private final ShareAccountRepository shareAccountRepository;
+    private final ShareAccountWritePlatformService shareAccountWritePlatformService;
     private final ConfigurationDomainService configurationDomainService;
 
     @Autowired
@@ -104,10 +103,12 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
             final SavingsAccountAssembler savingsAccountAssembler, final SavingsAccountDomainService savingsAccountDomainService,
             final LoanAssembler loanAssembler, final LoanAccountDomainService loanAccountDomainService,
             final SavingsAccountWritePlatformService savingsAccountWritePlatformService,
+            final ShareAccountWritePlatformService shareAccountWritePlatformService,
             final AccountTransferDetailRepository accountTransferDetailRepository, final LoanReadPlatformService loanReadPlatformService,
             final GSIMRepositoy gsimRepository, ConfigurationDomainService configurationDomainService,ShareAccountRepository shareAccountRepository,final ShareAccountDataSerializer shareAccountDataSerializer) {
         this.accountTransfersDataValidator = accountTransfersDataValidator;
         this.shareAccountRepository = shareAccountRepository;
+        this.shareAccountWritePlatformService = shareAccountWritePlatformService;
         this.accountTransferAssembler = accountTransferAssembler;
         this.accountTransferRepository = accountTransferRepository;
         this.shareAccountDataSerializer = shareAccountDataSerializer;
@@ -228,15 +229,15 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
             transferDetailId = accountTransferDetails.getId();
 
         } else if(isSharesToSharesAccountTransfer(fromAccountType,toAccountType)){
-            Map<String,Object> changes = new HashMap<>();
             fromShareAccountId = command.longValueOfParameterNamed(fromAccountIdParamName);
             final ShareAccount fromShareAccount = this.shareAccountRepository.getReferenceById(fromShareAccountId);
             toShareAccountId = command.longValueOfParameterNamed(toAccountIdParamName);
             final ShareAccount toShareAccount = this.shareAccountRepository.getReferenceById(toShareAccountId);
-            this.shareAccountDataSerializer.validateSharesTransfer(command,fromShareAccount,toShareAccount,true);
-            changes = this.shareAccountDataSerializer.validateSharesTransfer(command,fromShareAccount,toShareAccount,false);
-            ShareAccountTransaction redeemTransaction = (ShareAccountTransaction) changes.get(AccountTransfersApiConstants.fromTransaction);
-            ShareAccountTransaction purchaseTransaction = (ShareAccountTransaction) changes.get(AccountTransfersApiConstants.toTransaction);
+            this.shareAccountDataSerializer.validateSharesTransfer(command,fromShareAccount,toShareAccount);
+
+            ShareAccountTransaction redeemTransaction = this.shareAccountWritePlatformService.redeemSharesByTransfer(fromShareAccountId,command);
+            ShareAccountTransaction purchaseTransaction = this.shareAccountWritePlatformService.applyAdditionalSharesByTransfer(toShareAccountId,command);
+
             final AccountTransferDetails accountTransferDetails = this.accountTransferAssembler.assembleSharesToSharesTransfer(command,
                     fromShareAccount,toShareAccount,redeemTransaction,purchaseTransaction);
             this.accountTransferDetailRepository.saveAndFlush(accountTransferDetails);

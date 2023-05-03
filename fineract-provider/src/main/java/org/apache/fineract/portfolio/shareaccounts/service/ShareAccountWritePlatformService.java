@@ -20,6 +20,9 @@ package org.apache.fineract.portfolio.shareaccounts.service;
 
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountTransaction;
+
+
 
 public interface ShareAccountWritePlatformService {
 
@@ -41,7 +44,11 @@ public interface ShareAccountWritePlatformService {
 
     CommandProcessingResult approveAdditionalShares(Long accountId, JsonCommand jsonCommand);
 
+    ShareAccountTransaction applyAdditionalSharesByTransfer(Long accountId, JsonCommand jsonCommand);
+
     CommandProcessingResult rejectAdditionalShares(Long accountId, JsonCommand jsonCommand);
 
     CommandProcessingResult redeemShares(Long accountId, JsonCommand jsonCommand);
+
+    ShareAccountTransaction redeemSharesByTransfer(Long accountId, JsonCommand jsonCommand);
 }
