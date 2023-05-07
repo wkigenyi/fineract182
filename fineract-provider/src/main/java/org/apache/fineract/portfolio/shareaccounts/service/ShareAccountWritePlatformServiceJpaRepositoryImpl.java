@@ -134,6 +134,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
     }
 
     private Map<String, Object> populateJournalEntries(final ShareAccount account, final Set<ShareAccountTransaction> transactions) {
+
         final Map<String, Object> accountingBridgeData = new HashMap<>();
         Boolean cashBasedAccounting = account.getShareProduct().getAccountingType().intValue() == 2 ? Boolean.TRUE : Boolean.FALSE;
         accountingBridgeData.put("cashBasedAccountingEnabled", cashBasedAccounting);
@@ -305,7 +306,9 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
 
             for (ShareAccountTransaction transaction : transactions) {
                 if (transaction.isActive() && transaction.isPurchaseTransaction()) {
-                    journalTransactions.add(transaction);
+                    if(transaction.isPendingForApprovalTransaction()){
+                        journalTransactions.add(transaction);
+                    }
                     totalSubsribedShares += transaction.getTotalShares();
                 }
             }

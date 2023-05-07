@@ -961,7 +961,7 @@ public class ShareAccountDataSerializer {
     private void transferAmountForPurchaseShares(ShareAccountTransaction sharePurchase, JsonCommand jsonCommand) {
         DateTimeFormatter fmt = DateTimeFormatter
                 .ofPattern(jsonCommand.stringValueOfParameterNamed(ShareAccountApiConstants.dateformat_paramname));
-        SavingsTransactionBooleanValues booleanValues = new SavingsTransactionBooleanValues(true, false, false, false, false);
+        SavingsTransactionBooleanValues booleanValues = new SavingsTransactionBooleanValues(false, false, false, false, false);
         SavingsAccount fromAccount = this.savingsAccountAssembler.assembleFrom(sharePurchase.getShareAccount().getSavingsAccount().getId(),
                 false);
         SavingsAccountTransaction withdrawal = this.savingsAccountDomainService.handleWithdrawal(fromAccount, fmt,
