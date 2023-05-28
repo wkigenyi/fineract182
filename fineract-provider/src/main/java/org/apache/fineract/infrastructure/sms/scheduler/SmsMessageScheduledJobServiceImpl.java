@@ -150,6 +150,7 @@ public class SmsMessageScheduledJobServiceImpl implements SmsMessageScheduledJob
         Map<String, Object> hostConfig = this.smsConfigUtils.getMessageGateWayRequestURI("sms",
                 SmsMessageApiQueueResourceData.toJsonString(apiQueueResourceDatas));
         URI uri = (URI) hostConfig.get("uri");
+
         HttpEntity<?> entity = (HttpEntity<?>) hostConfig.get("entity");
         ResponseEntity<String> responseOne = restTemplate.exchange(uri, HttpMethod.POST, entity, new ParameterizedTypeReference<String>() {
 
@@ -179,17 +180,23 @@ public class SmsMessageScheduledJobServiceImpl implements SmsMessageScheduledJob
                             smsMessage.setStatusType(SmsMessageStatusType.WAITING_FOR_DELIVERY_REPORT.getValue());
                             toSendNotificationMessages.add(smsMessage);
                         } else {
-                            SmsMessageApiQueueResourceData apiQueueResourceData = SmsMessageApiQueueResourceData.instance(
-                                    smsMessage.getId(), null, null, null, smsMessage.getMobileNo(), smsMessage.getMessage(),
-                                    entry.getKey().getProviderId());
-                            apiQueueResourceDatas.add(apiQueueResourceData);
+
+
                             smsMessage.setStatusType(SmsMessageStatusType.WAITING_FOR_DELIVERY_REPORT.getValue());
                             toSaveMessages.add(smsMessage);
                         }
                     }
                     if (toSaveMessages.size() > 0) {
+
                         this.smsMessageRepository.saveAll(toSaveMessages);
                         this.smsMessageRepository.flush();
+                        for(SmsMessage smsMessage: toSaveMessages){
+                            SmsMessageApiQueueResourceData apiQueueResourceData = SmsMessageApiQueueResourceData.instance(
+                                    smsMessage.getId(), null, null, null, smsMessage.getMobileNo(), smsMessage.getMessage(),
+                                    entry.getKey().getProviderId());
+                            apiQueueResourceDatas.add(apiQueueResourceData);
+                        }
+
                         this.triggeredExecutorService.execute(new SmsTask(apiQueueResourceDatas, ThreadLocalContextUtil.getContext()));
                     }
                     if (!toSendNotificationMessages.isEmpty()) {
@@ -205,6 +212,7 @@ public class SmsMessageScheduledJobServiceImpl implements SmsMessageScheduledJob
 
     @Override
     public void sendTriggeredMessage(Collection<SmsMessage> smsMessages, long providerId) {
+
         try {
             Collection<SmsMessageApiQueueResourceData> apiQueueResourceDatas = new ArrayList<>();
             StringBuilder request = new StringBuilder();
