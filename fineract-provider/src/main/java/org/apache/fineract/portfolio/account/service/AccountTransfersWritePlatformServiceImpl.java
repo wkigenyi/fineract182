@@ -353,38 +353,43 @@ public class AccountTransfersWritePlatformServiceImpl implements AccountTransfer
                 toLoanAccount = accountTransferDetails.toLoanAccount();
                 this.loanAccountAssembler.setHelpers(toLoanAccount);
             }
+            if(toLoanAccount.status().isActive()){
+                final SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
+                        isRegularTransaction, fromSavingsAccount.isWithdrawalFeeApplicableForTransfer(),
+                        AccountTransferType.fromInt(accountTransferDTO.getTransferType()).isInterestTransfer(),
+                        accountTransferDTO.isExceptionForBalanceCheck());
 
-            final SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
-                    isRegularTransaction, fromSavingsAccount.isWithdrawalFeeApplicableForTransfer(),
-                    AccountTransferType.fromInt(accountTransferDTO.getTransferType()).isInterestTransfer(),
-                    accountTransferDTO.isExceptionForBalanceCheck());
+                final SavingsAccountTransaction withdrawal = this.savingsAccountDomainService.handleWithdrawal(fromSavingsAccount,
+                        accountTransferDTO.getFmt(), accountTransferDTO.getTransactionDate(), accountTransferDTO.getTransactionAmount(),
+                        accountTransferDTO.getPaymentDetail(), transactionBooleanValues, backdatedTxnsAllowedTill);
 
-            final SavingsAccountTransaction withdrawal = this.savingsAccountDomainService.handleWithdrawal(fromSavingsAccount,
-                    accountTransferDTO.getFmt(), accountTransferDTO.getTransactionDate(), accountTransferDTO.getTransactionAmount(),
-                    accountTransferDTO.getPaymentDetail(), transactionBooleanValues, backdatedTxnsAllowedTill);
+                LoanTransaction loanTransaction = null;
 
-            LoanTransaction loanTransaction = null;
+                if (AccountTransferType.fromInt(accountTransferDTO.getTransferType()).isChargePayment()) {
+                    loanTransaction = this.loanAccountDomainService.makeChargePayment(toLoanAccount, accountTransferDTO.getChargeId(),
+                            accountTransferDTO.getTransactionDate(), accountTransferDTO.getTransactionAmount(),
+                            accountTransferDTO.getPaymentDetail(), null, null, accountTransferDTO.getToTransferType(),
+                            accountTransferDTO.getLoanInstallmentNumber());
 
-            if (AccountTransferType.fromInt(accountTransferDTO.getTransferType()).isChargePayment()) {
-                loanTransaction = this.loanAccountDomainService.makeChargePayment(toLoanAccount, accountTransferDTO.getChargeId(),
-                        accountTransferDTO.getTransactionDate(), accountTransferDTO.getTransactionAmount(),
-                        accountTransferDTO.getPaymentDetail(), null, null, accountTransferDTO.getToTransferType(),
-                        accountTransferDTO.getLoanInstallmentNumber());
+                } else {
+                    final boolean isRecoveryRepayment = false;
+                    final Boolean isHolidayValidationDone = false;
+                    final HolidayDetailDTO holidayDetailDto = null;
 
-            } else {
-                final boolean isRecoveryRepayment = false;
-                final Boolean isHolidayValidationDone = false;
-                final HolidayDetailDTO holidayDetailDto = null;
-                loanTransaction = this.loanAccountDomainService.makeRepayment(LoanTransactionType.REPAYMENT, toLoanAccount,
-                        new CommandProcessingResultBuilder(), accountTransferDTO.getTransactionDate(),
-                        accountTransferDTO.getTransactionAmount(), accountTransferDTO.getPaymentDetail(), null, null, isRecoveryRepayment,
-                        isAccountTransfer, holidayDetailDto, isHolidayValidationDone);
+                        loanTransaction = this.loanAccountDomainService.makeRepayment(LoanTransactionType.REPAYMENT, toLoanAccount,
+                                new CommandProcessingResultBuilder(), accountTransferDTO.getTransactionDate(),
+                                accountTransferDTO.getTransactionAmount(), accountTransferDTO.getPaymentDetail(), null, null, isRecoveryRepayment,
+                                isAccountTransfer, holidayDetailDto, isHolidayValidationDone);
+
+
+                }
+
+                accountTransferDetails = this.accountTransferAssembler.assembleSavingsToLoanTransfer(accountTransferDTO, fromSavingsAccount,
+                        toLoanAccount, withdrawal, loanTransaction);
+                this.accountTransferDetailRepository.saveAndFlush(accountTransferDetails);
+                transferTransactionId = accountTransferDetails.getId();
             }
 
-            accountTransferDetails = this.accountTransferAssembler.assembleSavingsToLoanTransfer(accountTransferDTO, fromSavingsAccount,
-                    toLoanAccount, withdrawal, loanTransaction);
-            this.accountTransferDetailRepository.saveAndFlush(accountTransferDetails);
-            transferTransactionId = accountTransferDetails.getId();
         } else if (isSavingsToSavingsAccountTransfer(accountTransferDTO.getFromAccountType(), accountTransferDTO.getToAccountType())) {
 
             SavingsAccount fromSavingsAccount = null;
