@@ -22,17 +22,33 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
     <changeSet author="fineract" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_savings_account" columnName="reason_for_block"/>
+            </not>
+        </preConditions>
         <addColumn tableName="m_savings_account">
             <column name="reason_for_block" type="VARCHAR(256)"/>
         </addColumn>
     </changeSet>
     <changeSet author="fineract" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_savings_account_transaction" columnName="reason_for_block"/>
+            </not>
+        </preConditions>
         <addColumn tableName="m_savings_account_transaction">
             <column name="reason_for_block" type="VARCHAR(256)"/>
         </addColumn>
     </changeSet>
     <changeSet author="fineract" id="3">
+        <preConditions onFail="MARK_RAN">
+
+                <sqlCheck expectedResult="0">SELECT COUNT(*) FROM m_code WHERE name="SavingsAccountBlockReasons"</sqlCheck>
+
+        </preConditions>
         <insert tableName="m_code">
             <column name="code_name" value="SavingsAccountBlockReasons"/>
             <column name="is_system_defined" valueBoolean="true"/>

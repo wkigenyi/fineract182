@@ -23,6 +23,11 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
     <changeSet author="fineract" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_loan_charge" columnName="external_id"/>
+            </not>
+        </preConditions>
         <addColumn tableName="m_loan_charge">
             <column name="external_id" type="VARCHAR(100)">
                 <constraints unique="true"/>

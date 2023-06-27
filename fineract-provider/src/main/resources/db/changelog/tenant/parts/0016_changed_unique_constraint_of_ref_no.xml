@@ -26,6 +26,9 @@
         <dropUniqueConstraint tableName="m_savings_account_transaction" constraintName="m_savings_account_transaction_ref_no_key"/>
     </changeSet>
     <changeSet author="fineract" id="1" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <foreignKeyConstraintExists foreignKeyName="ref_no" foreignKeyTableName="m_savings_account_transaction"/>
+        </preConditions>
         <dropUniqueConstraint tableName="m_savings_account_transaction" constraintName="ref_no"/>
     </changeSet>
 </databaseChangeLog>
