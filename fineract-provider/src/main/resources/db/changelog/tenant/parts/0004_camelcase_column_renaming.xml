@@ -23,6 +23,11 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
     <changeSet author="fineract" id="1" objectQuotingStrategy="QUOTE_ALL_OBJECTS">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_adhoc" columnName="is_active"/>
+            </not>
+        </preConditions>
         <renameColumn tableName="m_adhoc" oldColumnName="IsActive" newColumnName="is_active" columnDataType="BOOLEAN"/>
         <renameColumn tableName="m_creditbureau" oldColumnName="implementationKey" newColumnName="implementation_key" columnDataType="VARCHAR(100)"/>
         <renameColumn tableName="m_creditbureau_loanproduct_mapping" oldColumnName="isActive" newColumnName="is_active" columnDataType="BOOLEAN"/>
