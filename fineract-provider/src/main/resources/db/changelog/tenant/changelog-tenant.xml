@@ -43,4 +43,8 @@
     <include file="parts/0026_reversals_for_reversed_transactions.xml" relativeToChangelogFile="true"/>
     <include file="parts/20230211-make-error-log-long-text.xml" relativeToChangelogFile="true"/>
     <include file="parts/2023-04-23-add-use-savings.xml" relativeToChangelogFile="true"/>
+    <include file="parts/20230704-transfers-are-not-withdrawals.xml" relativeToChangelogFile="true"/>
+    <include file="parts/20230704-add-share-transaction-id-to-report-parameters.xml" relativeToChangelogFile="true"/>
+    <include file="parts/20230704-sharepurchare-sms-report.xml" relativeToChangelogFile="true"/>
+    <include file="parts/20230704-add-share-purchase-parameters.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
