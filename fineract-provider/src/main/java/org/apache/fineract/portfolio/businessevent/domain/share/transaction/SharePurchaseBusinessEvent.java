@@ -16,15 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.fineract.portfolio.businessevent.domain.share.transaction;
 
-package org.apache.fineract.portfolio.businessevent.domain.savings.transaction;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountTransaction;
 
-import org.apache.fineract.portfolio.businessevent.domain.AbstractBusinessEvent;
-import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
-
-public abstract class SavingsAccountTransactionBusinessEvent extends AbstractBusinessEvent<SavingsAccountTransaction> {
-
-    public SavingsAccountTransactionBusinessEvent(SavingsAccountTransaction value) {
-        super(value);
-    }
+public class SharePurchaseBusinessEvent extends ShareAccountTransactionBusinessEvent{
+    public SharePurchaseBusinessEvent(ShareAccountTransaction value){super(value);}
 }

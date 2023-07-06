@@ -43,6 +43,7 @@ import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.portfolio.accounts.constants.ShareAccountApiConstants;
 import org.apache.fineract.portfolio.businessevent.domain.share.ShareAccountApproveBusinessEvent;
 import org.apache.fineract.portfolio.businessevent.domain.share.ShareAccountCreateBusinessEvent;
+import org.apache.fineract.portfolio.businessevent.domain.share.transaction.SharePurchaseBusinessEvent;
 import org.apache.fineract.portfolio.businessevent.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.client.domain.AccountNumberGenerator;
 import org.apache.fineract.portfolio.note.domain.Note;
@@ -431,6 +432,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
         try {
             ShareAccount account = this.shareAccountRepository.findOneWithNotFoundDetection(accountId);
             Map<String, Object> changes = this.accountDataSerializer.validateAndApproveAdditionalShares(jsonCommand, account);
+            ShareAccountTransaction purchaseTransaction = null;
             if (!changes.isEmpty()) {
                 this.shareAccountRepository.save(account);
                 ArrayList<Long> transactionIds = (ArrayList<Long>) changes.get(ShareAccountApiConstants.requestedshares_paramname);
@@ -439,10 +441,14 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
                     Set<ShareAccountTransaction> transactions = new HashSet<>();
                     for (Long id : transactionIds) {
                         ShareAccountTransaction transaction = account.retrievePurchasedShares(id);
+                        purchaseTransaction = transaction;
                         transactions.add(transaction);
                         totalSubscribedShares += transaction.getTotalShares();
                     }
                     this.journalEntryWritePlatformService.createJournalEntriesForShares(populateJournalEntries(account, transactions));
+                    if(purchaseTransaction != null){
+                        businessEventNotifierService.notifyPostBusinessEvent(new SharePurchaseBusinessEvent(purchaseTransaction));
+                    }
                 }
                 if (!totalSubscribedShares.equals(Long.valueOf(0))) {
                     ShareProduct shareProduct = account.getShareProduct();

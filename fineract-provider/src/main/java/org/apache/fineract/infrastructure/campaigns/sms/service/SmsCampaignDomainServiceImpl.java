@@ -54,6 +54,7 @@ import org.apache.fineract.portfolio.businessevent.domain.savings.SavingsActivat
 import org.apache.fineract.portfolio.businessevent.domain.savings.SavingsRejectBusinessEvent;
 import org.apache.fineract.portfolio.businessevent.domain.savings.transaction.SavingsDepositBusinessEvent;
 import org.apache.fineract.portfolio.businessevent.domain.savings.transaction.SavingsWithdrawalBusinessEvent;
+import org.apache.fineract.portfolio.businessevent.domain.share.transaction.SharePurchaseBusinessEvent;
 import org.apache.fineract.portfolio.businessevent.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.group.domain.Group;
@@ -63,6 +64,8 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanTypeException;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
+import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountTransaction;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -95,6 +98,8 @@ public class SmsCampaignDomainServiceImpl implements SmsCampaignDomainService {
                 new DepositSavingsAccountTransactionListener());
         businessEventNotifierService.addPostBusinessEventListener(SavingsWithdrawalBusinessEvent.class,
                 new NonDepositSavingsAccountTransactionListener());
+        businessEventNotifierService.addPostBusinessEventListener(SharePurchaseBusinessEvent.class,
+                new SharePurchaseTransactionListener());
     }
 
     private void notifyRejectedLoanOwner(Loan loan) {
@@ -280,6 +285,61 @@ public class SmsCampaignDomainServiceImpl implements SmsCampaignDomainService {
         }
     }
 
+    private void sendSmsForShareTransaction(final ShareAccountTransaction shareAccountTransaction) {
+        String campaignName = shareAccountTransaction.isPurchaseTransaction() ? "Share Purchase" : "Share Redeem";
+        List<SmsCampaign> smsCampaigns = retrieveSmsCampaigns(campaignName);
+        if (smsCampaigns.size() > 0) {
+            for (SmsCampaign smsCampaign : smsCampaigns) {
+                try {
+                    final ShareAccount shareAccount = shareAccountTransaction.getShareAccount();
+                    final Client client = shareAccount.getClient();
+                    HashMap<String, String> campaignParams = new ObjectMapper().readValue(smsCampaign.getParamValue(),
+                            new TypeReference<HashMap<String, String>>() {});
+                    HashMap<String, Object> smsParams = processShareTransactionDataForSms(shareAccountTransaction, client);
+                    for (String key : campaignParams.keySet()) {
+                        String value = campaignParams.get(key);
+                        String spvalue = null;
+                        boolean spkeycheck = smsParams.containsKey(key);
+                        if (spkeycheck) {
+                            spvalue = smsParams.get(key).toString();
+                        }
+                        if (spkeycheck && !(value.equals("-1") || spvalue.equals(value))) {
+                            if (key.equals("officeId")) {
+                                Office campaignOffice = this.officeRepository.findById(Long.valueOf(value)).orElse(null);
+                                if (campaignOffice.doesNotHaveAnOfficeInHierarchyWithId(client.getOffice().getId())) {
+                                    throw new SmsRuntimeException("error.msg.no.office", "Office not found for the id");
+                                }
+                            } else {
+                                throw new SmsRuntimeException("error.msg.no.id.attribute", "Office Id attribute is notfound");
+                            }
+                        }
+                    }
+                    String message = this.smsCampaignWritePlatformCommandHandler.compileSmsTemplate(smsCampaign.getMessage(),
+                            smsCampaign.getCampaignName(), smsParams);
+                    Object mobileNo = smsParams.get("mobileNo");
+                    if (this.smsCampaignValidator.isValidNotificationOrSms(client, smsCampaign, mobileNo)) {
+                        String mobileNumber = null;
+                        if (mobileNo != null) {
+                            mobileNumber = mobileNo.toString();
+                        }
+                        SmsMessage smsMessage = SmsMessage.pendingSms(null, null, client, null, message, mobileNumber, smsCampaign,
+                                smsCampaign.isNotification());
+                        this.smsMessageRepository.save(smsMessage);
+                        Collection<SmsMessage> messages = new ArrayList<>();
+                        messages.add(smsMessage);
+                        Map<SmsCampaign, Collection<SmsMessage>> smsDataMap = new HashMap<>();
+                        smsDataMap.put(smsCampaign, messages);
+                        this.smsMessageScheduledJobService.sendTriggeredMessages(smsDataMap);
+                    }
+                } catch (final IOException e) {
+                    log.error("smsParams does not contain the key: ", e);
+                } catch (final RuntimeException e) {
+                    log.debug("Client Office Id and SMS Campaign Office id doesn't match ", e);
+                }
+            }
+        }
+    }
+
     private List<SmsCampaign> retrieveSmsCampaigns(String paramValue) {
         List<SmsCampaign> smsCampaigns = smsCampaignRepository.findActiveSmsCampaigns("%" + paramValue + "%",
                 SmsCampaignTriggerType.TRIGGERED.getValue());
@@ -372,6 +432,42 @@ public class SmsCampaignDomainServiceImpl implements SmsCampaignDomainService {
         return smsParams;
     }
 
+    private HashMap<String, Object> processShareTransactionDataForSms(final ShareAccountTransaction shareAccountTransaction,
+                                                                        Client client) {
+
+        // {{savingsId}} {{id}} {{firstname}} {{middlename}} {{lastname}}
+        // {{FullName}} {{mobileNo}} {{savingsAccountId}} {{depositAmount}}
+        // {{balance}}
+
+        // transactionDate
+        HashMap<String, Object> smsParams = new HashMap<String, Object>();
+        ShareAccount shareAccount = shareAccountTransaction.getShareAccount();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM:d:yyyy");
+        smsParams.put("clientId", client.getId());
+        smsParams.put("firstname", client.getFirstname());
+        smsParams.put("middlename", client.getMiddlename());
+        smsParams.put("lastname", client.getLastname());
+        smsParams.put("FullName", client.getDisplayName());
+        smsParams.put("mobileNo", client.mobileNo());
+        smsParams.put("purchaseAmount", shareAccountTransaction.amount());
+        smsParams.put("sharesId", shareAccount.getId());
+        smsParams.put("shareAccountNo", shareAccount.getAccountNumber());
+        smsParams.put("sharesPurchased", shareAccountTransaction.getTotalShares());
+        smsParams.put("totalShares", shareAccount.getTotalApprovedShares());
+        smsParams.put("officeId", client.getOffice().getId());
+        smsParams.put("transactionDate", shareAccountTransaction.getPurchasedDate().format(dateFormatter));
+        smsParams.put("shareTransactionId", shareAccountTransaction.getId());
+
+        if (client.getStaff() != null) {
+            smsParams.put("loanOfficerId", client.getStaff().getId());
+        } else {
+            smsParams.put("loanOfficerId", -1);
+        }
+
+
+        return smsParams;
+    }
+
     private class SendSmsOnLoanApproved implements BusinessEventListener<LoanApprovedBusinessEvent> {
 
         @Override
@@ -435,6 +531,15 @@ public class SmsCampaignDomainServiceImpl implements SmsCampaignDomainService {
         @Override
         public void onBusinessEvent(SavingsDepositBusinessEvent event) {
             sendSmsForSavingsTransaction(event.get(), true);
+        }
+    }
+
+    private class SharePurchaseTransactionListener implements BusinessEventListener<SharePurchaseBusinessEvent>{
+
+
+        @Override
+        public void onBusinessEvent(SharePurchaseBusinessEvent event) {
+            sendSmsForShareTransaction(event.get());
         }
     }
 
