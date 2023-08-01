@@ -960,7 +960,7 @@ public class SavingsAccount extends AbstractPersistableCustom {
 
     protected List<SavingsAccountTransaction> retrieveSortedTransactions() {
         final List<SavingsAccountTransaction> listOfTransactionsSorted = new ArrayList<>();
-        listOfTransactionsSorted.addAll(this.savingsAccountTransactions);
+        listOfTransactionsSorted.addAll(this.transactions);
         final SavingsAccountTransactionComparator transactionComparator = new SavingsAccountTransactionComparator();
         Collections.sort(listOfTransactionsSorted, transactionComparator);
         return listOfTransactionsSorted;
@@ -980,14 +980,15 @@ public class SavingsAccount extends AbstractPersistableCustom {
         Money runningBalance = openingAccountBalance.copy();
 
         List<SavingsAccountTransaction> accountTransactionsSorted = null;
-
-        if (backdatedTxnsAllowedTill) {
+            accountTransactionsSorted = retrieveSortedTransactions();
+        /*if (backdatedTxnsAllowedTill) {
             accountTransactionsSorted = retrieveSortedTransactions();
         } else {
             accountTransactionsSorted = retreiveListOfTransactions();
-        }
+        }*/
 
         boolean isTransactionsModified = false;
+
         for (final SavingsAccountTransaction transaction : accountTransactionsSorted) {
             if (transaction.isReversed() || transaction.isReversalTransaction()) {
                 transaction.zeroBalanceFields();
@@ -1282,9 +1283,12 @@ public class SavingsAccount extends AbstractPersistableCustom {
                 transactionDTO.getPaymentDetail(), transactionDTO.getTransactionDate(), transactionAmountMoney,
                 transactionDTO.getCreatedDate(), transactionDTO.getAppUser(), refNo);
 
+
         if (backdatedTxnsAllowedTill) {
+            LOG.info("We are adding transaction to existing");
             addTransactionToExisting(transaction);
         } else {
+            LOG.info("We are adding transaction");
             addTransaction(transaction);
         }
 
@@ -2941,6 +2945,7 @@ public class SavingsAccount extends AbstractPersistableCustom {
     }
 
     public void addTransaction(final SavingsAccountTransaction transaction) {
+
         this.transactions.add(transaction);
     }
 

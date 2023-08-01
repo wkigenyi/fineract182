@@ -25,6 +25,9 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.13.xsd">
     <changeSet id="2023070404" author="wkigenyi">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM stretchy_report_parameter WHERE report_id = 230 AND parameter_id = 5</sqlCheck>
+        </preConditions>
         <insert tableName="stretchy_report_parameter">
 
             <column name="report_id" valueNumeric="230"/>
